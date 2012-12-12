@@ -1,0 +1,123 @@
+import os
+import ogr
+import osr
+
+
+## Construct WGS84 projection system
+wgs84 = osr.SpatialReference()
+wgs84.SetWellKnownGeogCS("WGS84")
+
+## Construct Lambert projection system
+lambert_wkt = 'PROJCS["Belgian National System (7 parameters)",GEOGCS["unnamed",DATUM["Belgian 1972 7 Parameter",SPHEROID["International 1924",6378388,297],TOWGS84[-99.059,53.322,-112.486,0.419,-0.83,1.885,0.999999]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]],PROJECTION["Lambert_Conformal_Conic_2SP"],PARAMETER["standard_parallel_1",49.8333339],PARAMETER["standard_parallel_2",51.1666672333],PARAMETER["latitude_of_origin",90],PARAMETER["central_meridian",4.3674866667],PARAMETER["false_easting",150000.013],PARAMETER["false_northing",5400088.438],UNIT["Meter",1.0]]'
+#lambert_wkt = 'PROJCS["Belge 1972 / Belgian Lambert 72",GEOGCS["Belge 1972",DATUM["Reseau_National_Belge_1972",SPHEROID["International 1924",6378388,297,AUTHORITY["EPSG","7022"]],TOWGS84[106.869,-52.2978,103.724,-0.33657,0.456955,-1.84218,1],AUTHORITY["EPSG","6313"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4313"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],PROJECTION["Lambert_Conformal_Conic_2SP"],PARAMETER["standard_parallel_1",51.16666723333333],PARAMETER["standard_parallel_2",49.8333339],PARAMETER["latitude_of_origin",90],PARAMETER["central_meridian",4.367486666666666],PARAMETER["false_easting",150000.013],PARAMETER["false_northing",5400088.438],AUTHORITY["EPSG","31370"],AXIS["X",EAST],AXIS["Y",NORTH]]'
+lambert1972 = osr.SpatialReference()
+lambert1972.ImportFromWkt(lambert_wkt)
+
+## Consruct UTM 31 N projection system
+def get_utm_srs(utm_spec="UTM31N"):
+	"""
+	:param utm_spec:
+		String, UTM specification (default: "UTM31N")
+	"""
+	utm_hemisphere = utm_spec[-1]
+	utm_zone = int(utm_spec[-3:-1])
+	utm = osr.SpatialReference()
+	utm.SetProjCS("UTM %d (WGS84) in northern hemisphere." % utm_zone)
+	utm.SetWellKnownGeogCS("WGS84")
+	utm.SetUTM(utm_zone, {"N": True, "S": False}[utm_hemisphere])
+	return utm
+
+def transform_coordinates(source_srs, target_srs, coord_list):
+	"""
+	Transform (reproject) source and receiver coordinates.
+	Header words sx, sy, gx, gy, counit, and scalco are modified in-place.
+
+	:param source_srs:
+		osr SpatialReference object: source coordinate system
+	:param target_srs:
+		osr SpatialReference object: target coordinate system
+	:param coord_list:
+		List of (lon, lat) or (easting, northing) tuples
+
+	:return:
+		List of transformed coordinates (tuples)
+	"""
+
+	coordTrans = osr.CoordinateTransformation(source_srs, target_srs)
+	line = ogr.Geometry(ogr.wkbLineString)
+	line.AssignSpatialReference(source_srs)
+	for coord in coord_list:
+		x, y = coord[:2]
+		line.AddPoint(x, y)
+	line.Transform(coordTrans)
+	out_coord_list = []
+	for i in range(line.GetPointCount()):
+		out_coord_list.append((line.GetX(i), line.GetY(i)))
+	line.Empty()
+	return out_coord_list
+
+
+def lonlat_to_lambert1972(coord_list):
+	return transform_coordinates(wgs84, lambert1972, coord_list)
+
+
+def lambert1972_to_lonlat(coord_list):
+	return transform_coordinates(lambert1972, wgs84, coord_list)
+
+
+def lonlat_to_utm(coord_list, utm_spec):
+	utm_srs = coordtrans.get_utm_srs(utm_spec)
+	return coordtrans.transform_coordinates(wgs84, utm_srs, coord_list)
+
+
+def utm_to_lonlat(coord_list, utm_spec):
+	utm_srs = coordtrans.get_utm_srs(utm_spec)
+	return coordtrans.transform_coordinates(utm_srs, wgs84, coord_list)
+
+
+
+if __name__ == "__main__":
+	"""
+	## Should return 66333.00 222966.00
+	coord_list = [(3.1688526555555554, 51.31044484722222)]
+	print "%.2f, %.2f" % lonlat_to_lambert1972(coord_list)[0]
+
+	## Should return 226696.00 203425.00
+	coord_list = [(5.464567200000001, 51.135779408333335)]
+	print "%.2f, %.2f" % lonlat_to_lambert1972(coord_list)[0]
+
+	## Should return 127514.00 132032.00
+	coord_list = [(4.051806319444444, 50.49865343055556)]
+	print "%.2f, %.2f" % lonlat_to_lambert1972(coord_list)[0]
+	"""
+
+	## Read input file
+	in_filespec = r"C:\Temp\2008-2010 lonlat to lambert.txt"
+	column_data, coord_list = [], []
+	for i, line in enumerate(open(in_filespec)):
+		if i == 0:
+			column_names = line.split()
+			lon_column = column_names.index("lon")
+			lat_column = column_names.index("lat")
+		else:
+			row_data = line.split()
+			column_data.append(row_data)
+			coord_list.append((float(row_data[lon_column]), float(row_data[lat_column])))
+
+	## Transform coordinates
+	out_coord_list = lonlat_to_lambert1972(coord_list)
+	for i in range(len(column_data)):
+		column_data[i][lon_column] = str(out_coord_list[i][0])
+		column_data[i][lat_column] = str(out_coord_list[i][1])
+
+	## Write output file
+	column_names[lon_column] = "easting"
+	column_names[lat_column] = "northing"
+	out_filespec = os.path.splitext(in_filespec)[0] + "_conv.txt"
+	f = open(out_filespec, "w")
+	f.write("\t".join(column_names))
+	f.write("\n")
+	for row_data in column_data:
+		f.write("\t".join(row_data))
+		f.write("\n")
+	f.close()
