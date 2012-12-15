@@ -13,11 +13,15 @@ lambert_wkt = 'PROJCS["Belgian National System (7 parameters)",GEOGCS["unnamed",
 lambert1972 = osr.SpatialReference()
 lambert1972.ImportFromWkt(lambert_wkt)
 
-## Consruct UTM 31 N projection system
+
 def get_utm_srs(utm_spec="UTM31N"):
 	"""
 	:param utm_spec:
-		String, UTM specification (default: "UTM31N")
+		String, UTM specification: "UTM" + "%02d" % zone_number + "%c" % hemisphere
+		(default: "UTM31N")
+
+	:return:
+		Instance of :class:`osr.SpatialReference`
 	"""
 	utm_hemisphere = utm_spec[-1]
 	utm_zone = int(utm_spec[-3:-1])
@@ -26,6 +30,7 @@ def get_utm_srs(utm_spec="UTM31N"):
 	utm.SetWellKnownGeogCS("WGS84")
 	utm.SetUTM(utm_zone, {"N": True, "S": False}[utm_hemisphere])
 	return utm
+
 
 def transform_coordinates(source_srs, target_srs, coord_list):
 	"""
@@ -58,26 +63,67 @@ def transform_coordinates(source_srs, target_srs, coord_list):
 
 
 def lonlat_to_lambert1972(coord_list):
+	"""
+	Convert geographic coordinates (WGS84) to Lambert 1972
+
+	:param coord_list:
+		List of (lon, lat) tuples
+
+	:return:
+		List of (easting, northing) tuples
+	"""
 	return transform_coordinates(wgs84, lambert1972, coord_list)
 
 
 def lambert1972_to_lonlat(coord_list):
+	"""
+	Convert Lambert 1972 coordinates to geographic coordinates (WGS84)
+
+	:param coord_list:
+		List of (easting, northing) tuples
+
+	:return:
+		List of (lon, lat) tuples
+	"""
 	return transform_coordinates(lambert1972, wgs84, coord_list)
 
 
-def lonlat_to_utm(coord_list, utm_spec):
+def lonlat_to_utm(coord_list, utm_spec="UTM31N"):
+	"""
+	Convert geographic coordinates (WGS84) to Lambert 1972
+
+	:param coord_list:
+		List of (lon, lat) tuples
+	:param utm_spec:
+		String, UTM specification: "UTM" + "%02d" % zone_number + "%c" % hemisphere
+		(default: "UTM31N")
+
+	:return:
+		List of (easting, northing) tuples
+	"""
 	utm_srs = coordtrans.get_utm_srs(utm_spec)
 	return coordtrans.transform_coordinates(wgs84, utm_srs, coord_list)
 
 
-def utm_to_lonlat(coord_list, utm_spec):
+def utm_to_lonlat(coord_list, utm_spec="UTM31N"):
+	"""
+	Convert Lambert 1972 coordinates to geographic coordinates (WGS84)
+
+	:param coord_list:
+		List of (easting, northing) tuples
+	:param utm_spec:
+		String, UTM specification: "UTM" + "%02d" % zone_number + "%c" % hemisphere
+		(default: "UTM31N")
+
+	:return:
+		List of (lon, lat) tuples
+	"""
 	utm_srs = coordtrans.get_utm_srs(utm_spec)
 	return coordtrans.transform_coordinates(utm_srs, wgs84, coord_list)
 
 
 
 if __name__ == "__main__":
-	"""
 	## Should return 66333.00 222966.00
 	coord_list = [(3.1688526555555554, 51.31044484722222)]
 	print "%.2f, %.2f" % lonlat_to_lambert1972(coord_list)[0]
@@ -89,35 +135,3 @@ if __name__ == "__main__":
 	## Should return 127514.00 132032.00
 	coord_list = [(4.051806319444444, 50.49865343055556)]
 	print "%.2f, %.2f" % lonlat_to_lambert1972(coord_list)[0]
-	"""
-
-	## Read input file
-	in_filespec = r"C:\Temp\2008-2010 lonlat to lambert.txt"
-	column_data, coord_list = [], []
-	for i, line in enumerate(open(in_filespec)):
-		if i == 0:
-			column_names = line.split()
-			lon_column = column_names.index("lon")
-			lat_column = column_names.index("lat")
-		else:
-			row_data = line.split()
-			column_data.append(row_data)
-			coord_list.append((float(row_data[lon_column]), float(row_data[lat_column])))
-
-	## Transform coordinates
-	out_coord_list = lonlat_to_lambert1972(coord_list)
-	for i in range(len(column_data)):
-		column_data[i][lon_column] = str(out_coord_list[i][0])
-		column_data[i][lat_column] = str(out_coord_list[i][1])
-
-	## Write output file
-	column_names[lon_column] = "easting"
-	column_names[lat_column] = "northing"
-	out_filespec = os.path.splitext(in_filespec)[0] + "_conv.txt"
-	f = open(out_filespec, "w")
-	f.write("\t".join(column_names))
-	f.write("\n")
-	for row_data in column_data:
-		f.write("\t".join(row_data))
-		f.write("\n")
-	f.close()
