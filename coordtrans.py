@@ -14,15 +14,44 @@ lambert1972 = osr.SpatialReference()
 lambert1972.ImportFromWkt(lambert_wkt)
 
 
+def get_utm_spec(lon, lat):
+	"""
+	Determine UTM zone and hemisphere
+
+	:param lon:
+		Float, longitude
+	:param lat:
+		Float, latitude
+
+	:return:
+		(Int, Str) tuple: UTM zone, hemisphere
+	"""
+	## Constrain longitude between -180 and 180
+	lon = (lon + 180) - int((lon + 180) / 360) *360 - 180
+	utm_zone = int((lon + 180) / 6 ) + 1
+
+	if lat < 0:
+		utm_hemisphere = "S"
+	else:
+		utm_hemisphere = "N"
+
+	return (utm_zone, utm_hemisphere)
+
+
 def get_utm_srs(utm_spec="UTM31N"):
 	"""
 	:param utm_spec:
 		String, UTM specification: "UTM" + "%02d" % zone_number + "%c" % hemisphere
 		(default: "UTM31N")
+		or
+		(Int, Str) tuple with UTM zone and hemisphere
 
 	:return:
 		Instance of :class:`osr.SpatialReference`
 	"""
+	if not isinstance(utm_spec, (str, unicode)):
+		utm_zone, hemisphere = utm_spec[:2]
+		utm_spec = "UTM%d%s" % (utm_zone, hemisphere)
 	utm_hemisphere = utm_spec[-1]
 	utm_zone = int(utm_spec[-3:-1])
 	utm = osr.SpatialReference()
