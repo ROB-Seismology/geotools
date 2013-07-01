@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import ogr
 import osr
 
@@ -71,7 +72,7 @@ def transform_coordinates(source_srs, target_srs, coord_list):
 	:param target_srs:
 		osr SpatialReference object: target coordinate system
 	:param coord_list:
-		List of (lon, lat) or (easting, northing) tuples
+		List of (lon, lat, [z]) or (easting, northing, [z]) tuples
 
 	:return:
 		List of transformed coordinates (tuples)
@@ -80,13 +81,23 @@ def transform_coordinates(source_srs, target_srs, coord_list):
 	coordTrans = osr.CoordinateTransformation(source_srs, target_srs)
 	line = ogr.Geometry(ogr.wkbLineString)
 	line.AssignSpatialReference(source_srs)
+	has_elevation = False
+	if len(coord_list[0]) > 2:
+		has_elevation = True
 	for coord in coord_list:
 		x, y = coord[:2]
-		line.AddPoint(x, y)
+		if has_elevation:
+			z = coord[2]
+			line.AddPoint(x, y, z)
+		else:
+			line.AddPoint(x, y)
 	line.Transform(coordTrans)
 	out_coord_list = []
 	for i in range(line.GetPointCount()):
-		out_coord_list.append((line.GetX(i), line.GetY(i)))
+		if has_elevation:
+			out_coord_list.append((line.GetX(i), line.GetY(i), line.GetZ(i)))
+		else:
+			out_coord_list.append((line.GetX(i), line.GetY(i)))
 	line.Empty()
 	return out_coord_list
 
@@ -130,8 +141,8 @@ def lonlat_to_utm(coord_list, utm_spec="UTM31N"):
 	:return:
 		List of (easting, northing) tuples
 	"""
-	utm_srs = coordtrans.get_utm_srs(utm_spec)
-	return coordtrans.transform_coordinates(wgs84, utm_srs, coord_list)
+	utm_srs = get_utm_srs(utm_spec)
+	return transform_coordinates(wgs84, utm_srs, coord_list)
 
 
 def utm_to_lonlat(coord_list, utm_spec="UTM31N"):
@@ -147,8 +158,70 @@ def utm_to_lonlat(coord_list, utm_spec="UTM31N"):
 	:return:
 		List of (lon, lat) tuples
 	"""
-	utm_srs = coordtrans.get_utm_srs(utm_spec)
-	return coordtrans.transform_coordinates(utm_srs, wgs84, coord_list)
+	utm_srs = get_utm_srs(utm_spec)
+	return transform_coordinates(utm_srs, wgs84, coord_list)
+
+
+def lonlat_to_ECEF(coord_list, a=1., e=0.):
+	"""
+	Convert geographic coordinates to earth-centered, earth-fixed coordinates
+
+	:param coord_list:
+		List of (easting, northing, altitude) tuples
+		altitude in meters
+	:param a:
+		Float, semi-major axis of ellipsoid (default: 1.)
+	:param e:
+		Float, eccentricity of ellipsoid (default: 0.)
+
+	:return:
+		List of (X, Y, Z) tuples
+	"""
+	def get_prime_vertical_of_curvature(phi, a, e):
+		## return prime vertical of curvature (in meters)
+		return a / np.sqrt(1. - np.e**2 * (np.sin(phi))**2)
+
+	lons, lats, h = zip(*coord_list)
+	lamda = np.radians(lons)
+	phi = np.radians(lats)
+	N = get_prime_vertical_of_curvature(phi, a, e)
+
+	X = (N + h) * np.cos(phi) * np.cos(lamda)
+	Y = (N + h) * np.cos(phi) * np.sin(lamda)
+	Z = (N * (1. - np.e**2) + h) * np.sin(phi)
+
+	return (X, Y, Z)
+
+
+def lonlat_to_ECEF2(coord_list):
+	"""
+	Convert geographic coordinates to earth-centered, earth-fixed coordinates
+
+	:param coord_list:
+		List of (easting, northing, altitude) tuples
+		altitude in meters
+
+	:return:
+		List of (X, Y, Z) tuples
+	"""
+	ecef_wkt = """
+	GEOCCS['WGS 84',
+	DATUM['WGS_1984',
+		SPHEROID['WGS 84',6378137,298.257223563,
+			AUTHORITY['EPSG','7030']],
+		AUTHORITY['EPSG','6326']],
+	PRIMEM['Greenwich',0,
+		AUTHORITY['EPSG','8901']],
+	UNIT['metre',1,
+		AUTHORITY['EPSG','9001']],
+	AXIS['Geocentric X',OTHER],
+	AXIS['Geocentric Y',OTHER],
+	AXIS['Geocentric Z',NORTH],
+	AUTHORITY['EPSG','4978']]
+	"""
+	ecef = osr.SpatialReference()
+	ecef.ImportFromWkt(ecef_wkt)
+	return transform_coordinates(wgs84, ecef, coord_list)
 
 
 
@@ -164,3 +237,8 @@ if __name__ == "__main__":
 	## Should return 127514.00 132032.00
 	coord_list = [(4.051806319444444, 50.49865343055556)]
 	print "%.2f, %.2f" % lonlat_to_lambert1972(coord_list)[0]
+
+	## Should return -2430880.68434096 -4770871.96871711 3453958.6411779
+	coord_list = [(-117, 33, 0)]
+	print lonlat_to_ECEF2(coord_list)
+
