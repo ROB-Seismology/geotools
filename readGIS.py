@@ -26,13 +26,9 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 	wgs84 = osr.SpatialReference()
 	wgs84.SetWellKnownGeogCS("WGS84")
 
-	## Select driver based on file extension
-	if os.path.splitext(GIS_filespec)[1].upper() == ".TAB":
-		ogr_driver = ogr.GetDriverByName("MapInfo File")
-	elif os.path.splitext(GIS_filespec)[1].upper() == ".SHP":
-		ogr_driver = ogr.GetDriverByName("ESRI Shapefile")
-
-	ds = ogr_driver.Open(GIS_filespec)
+	ds = ogr.Open(GIS_filespec, 0)
+	if ds is None:
+		raise Exception("OGR failed to open %s" % gis_filespec)
 	num_layers = ds.GetLayerCount()
 	if verbose:
 		print("Number of layers: %d" % num_layers)
