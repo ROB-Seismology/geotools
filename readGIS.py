@@ -28,7 +28,7 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 
 	ds = ogr.Open(GIS_filespec, 0)
 	if ds is None:
-		raise Exception("OGR failed to open %s" % gis_filespec)
+		raise Exception("OGR failed to open %s" % GIS_filespec)
 	num_layers = ds.GetLayerCount()
 	if verbose:
 		print("Number of layers: %d" % num_layers)
