@@ -57,19 +57,21 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 		feature_data = {}
 		feature = layer.GetNextFeature()
 
-		## Get geometry
-		## Note: we need to clone the geometry returned by GetGeometryRef(),
-		## otherwise python will crash
-		## See http://trac.osgeo.org/gdal/wiki/PythonGotchas
-		geom = feature.GetGeometryRef().Clone()
-		geom.AssignSpatialReference(tab_sr)
-		geom.Transform(coordTrans)
-		#geom.CloseRings()
-		feature_data['obj'] = geom
+		## Silently ignore empty rows
+		if feature:
+			## Get geometry
+			## Note: we need to clone the geometry returned by GetGeometryRef(),
+			## otherwise python will crash
+			## See http://trac.osgeo.org/gdal/wiki/PythonGotchas
+			geom = feature.GetGeometryRef().Clone()
+			geom.AssignSpatialReference(tab_sr)
+			geom.Transform(coordTrans)
+			#geom.CloseRings()
+			feature_data['obj'] = geom
 
-		## Get feature attributes
-		for field_name in field_names:
-			feature_data[field_name] = feature.GetField(field_name)
-		records.append(feature_data)
+			## Get feature attributes
+			for field_name in field_names:
+				feature_data[field_name] = feature.GetField(field_name)
+			records.append(feature_data)
 	return records
 
