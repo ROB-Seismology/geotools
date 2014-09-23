@@ -75,3 +75,76 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 			records.append(feature_data)
 	return records
 
+
+def read_GIS_file_attributes(GIS_filespec, layer_num=0):
+	"""
+	Read GIS data attributes.
+
+	:param GIS_filespec:
+		String, full path to GIS file to read
+	:param layer_num:
+		Integer, index of layer to read (default: 0)
+
+	:return:
+		list of attribute names.
+	"""
+	ds = ogr.Open(GIS_filespec, 0)
+	if ds is None:
+		raise Exception("OGR failed to open %s" % GIS_filespec)
+	num_layers = ds.GetLayerCount()
+
+	if layer_num < num_layers:
+		layer = ds.GetLayer(layer_num)
+	else:
+		raise Exception("File contains less than %d layers!" % layer_num)
+
+	## Get all field names
+	field_names = []
+	ld = layer.GetLayerDefn()
+	for field_index in range(ld.GetFieldCount()):
+		fd = ld.GetFieldDefn(field_index)
+		field_names.append(fd.GetName())
+
+	return field_names
+
+
+def read_GIS_file_shapes(GIS_filespec, layer_num=0):
+	"""
+	Read GIS shapes.
+
+	:param GIS_filespec:
+		String, full path to GIS file to read
+	:param layer_num:
+		Integer, index of layer to read (default: 0)
+
+	:return:
+		list of GIS shapes.
+	"""
+	ds = ogr.Open(GIS_filespec, 0)
+	if ds is None:
+		raise Exception("OGR failed to open %s" % GIS_filespec)
+	num_layers = ds.GetLayerCount()
+
+	if layer_num < num_layers:
+		layer = ds.GetLayer(layer_num)
+	else:
+		raise Exception("File contains less than %d layers!" % layer_num)
+
+	num_features = layer.GetFeatureCount()
+	shapes = set()
+	for i in range(num_features):
+		feature = layer.GetNextFeature()
+
+		## Silently ignore empty rows
+		if feature:
+			## Get geometry
+			geom = feature.GetGeometryRef().Clone()
+			geom_type = geom.GetGeometryName()
+			if geom_type in ("POINT", "MULTIPOINT"):
+				shapes.add("points")
+			elif geom_type in ("LINESTRING", "MULTILINESTRING"):
+				shapes.add("polylines")
+			elif geom_type in ("POLYGON", "MULTIPOLYGON"):
+				shapes.add("polygons")
+
+	return list(shapes)
