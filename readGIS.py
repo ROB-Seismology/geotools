@@ -72,6 +72,7 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 			## Get feature attributes
 			for field_name in field_names:
 				feature_data[field_name] = feature.GetField(field_name)
+				# TODO: convert strings to unicode based on charset in TAB definition
 			records.append(feature_data)
 	return records
 
