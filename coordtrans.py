@@ -65,7 +65,6 @@ def get_utm_srs(utm_spec="UTM31N"):
 def transform_coordinates(source_srs, target_srs, coord_list):
 	"""
 	Transform (reproject) source and receiver coordinates.
-	Header words sx, sy, gx, gy, counit, and scalco are modified in-place.
 
 	:param source_srs:
 		osr SpatialReference object: source coordinate system
@@ -79,6 +78,7 @@ def transform_coordinates(source_srs, target_srs, coord_list):
 	"""
 
 	coordTrans = osr.CoordinateTransformation(source_srs, target_srs)
+	# TODO: use coordTrans.TransformPoints instead of creating line
 	line = ogr.Geometry(ogr.wkbLineString)
 	line.AssignSpatialReference(source_srs)
 	has_elevation = False
@@ -100,6 +100,44 @@ def transform_coordinates(source_srs, target_srs, coord_list):
 			out_coord_list.append((line.GetX(i), line.GetY(i)))
 	line.Empty()
 	return out_coord_list
+
+
+def transform_mesh_coordinates(source_srs, target_srs, x_source, y_source):
+	"""
+	Transform meshed coordinates
+	Source: http://stackoverflow.com/questions/20488765/plot-gdal-raster-using-matplotlib-basemap
+
+	:param source_srs:
+		osr SpatialReference object: source coordinate system
+	:param target_srs:
+		osr SpatialReference object: target coordinate system
+	:param x_source:
+		2-D float array, input coordinate array representing x coordinates
+		(longitudes or eastings) of a meshed grid
+	:param y_source:
+		2-D float array, input coordinate array representing y coordinates
+		(latitudes or northings) of a meshed grid
+
+	:return:
+		(xx, yy) tuple of 2-D float arrays: output coordinate arrays
+		representing x and y coordinates of a meshed grid
+	"""
+	ct = osr.CoordinateTransformation(source_srs, target_srs)
+
+	## the ct object takes and returns pairs of x,y, not 2d grids
+	## so the the grid needs to be reshaped (flattened) and back.
+	size = x_source.size
+	shape = x_source.shape
+	xy_source = np.zeros((size, 2))
+	xy_source[:,0] = x_source.reshape(1, size)
+	xy_source[:,1] = y_source.reshape(1, size)
+
+	xy_target = np.array(ct.TransformPoints(xy_source))
+
+	xx = xy_target[:,0].reshape(shape)
+	yy = xy_target[:,1].reshape(shape)
+
+	return xx, yy
 
 
 def lonlat_to_lambert1972(coord_list):
