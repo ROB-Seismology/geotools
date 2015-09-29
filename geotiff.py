@@ -6,6 +6,8 @@ import numpy as np
 import PIL
 import gdal, osr
 
+gdal.UseExceptions()
+
 
 def write_single_band_geotiff(out_filespec, data, extent, srs, cell_registration="center",
 								north_up=False, nodata_value=np.nan):
@@ -100,7 +102,6 @@ def write_multi_band_geotiff(out_filespec, img, extent, srs, cell_registration="
 	else:
 		img_ar = img
 	ny, nx, num_bands = img_ar.shape
-	print nx, ny, num_bands
 
 	## Order of rows should be north to south, otherwise image is upside down
 	if not north_up:
@@ -137,3 +138,6 @@ def write_multi_band_geotiff(out_filespec, img, extent, srs, cell_registration="
 		band.WriteArray(img_ar[:,:,i])
 	ds.FlushCache()
 
+# VRT rasters:
+# http://sgillies.net/blog/2014/02/25/warping-images-with-rasterio.html
+# http://gdal-dev.osgeo.narkive.com/zm2sNhhI/using-vrt-to-project-rotate-tiff-files-on-the-fly

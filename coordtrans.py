@@ -62,9 +62,35 @@ def get_utm_srs(utm_spec="UTM31N"):
 	return utm
 
 
+def transform_point(source_srs, target_srs, x, y, z=None):
+	"""
+	Transform (reproject) a single point.
+
+	:param source_srs:
+		osr SpatialReference object: source coordinate system
+	:param target_srs:
+		osr SpatialReference object: target coordinate system
+	:param x:
+		float, longitude or easting
+	:param y:
+		float, latitude or northing
+	:param z:
+		float, elevation in m (default: None):
+
+	:return:
+		(x, y, [z]) tuple of transformed coordinates
+	"""
+	ct = osr.CoordinateTransformation(source_srs, target_srs)
+
+	if z is None:
+		return ct.TransformPoint(x, y)[:2]
+	else:
+		return ct.TransformPoint(x, y, z)
+
+
 def transform_coordinates(source_srs, target_srs, coord_list):
 	"""
-	Transform (reproject) source and receiver coordinates.
+	Transform (reproject) a list of coordinates.
 
 	:param source_srs:
 		osr SpatialReference object: source coordinate system
@@ -78,7 +104,7 @@ def transform_coordinates(source_srs, target_srs, coord_list):
 	"""
 
 	coordTrans = osr.CoordinateTransformation(source_srs, target_srs)
-	# TODO: use coordTrans.TransformPoints instead of creating line
+
 	line = ogr.Geometry(ogr.wkbLineString)
 	line.AssignSpatialReference(source_srs)
 	has_elevation = False
@@ -102,9 +128,77 @@ def transform_coordinates(source_srs, target_srs, coord_list):
 	return out_coord_list
 
 
+def gen_transform_coordinates(source_srs, target_srs, coord_list):
+	"""
+	Transform (reproject) a list of coordinates one by one
+	(to avoid memory problems).
+
+	:param source_srs:
+		osr SpatialReference object: source coordinate system
+	:param target_srs:
+		osr SpatialReference object: target coordinate system
+	:param coord_list:
+		List of (lon, lat, [z]) or (easting, northing, [z]) tuples
+
+	:return:
+		Generator yielding (x, y, [z]) tuple of transformed coordinates
+	"""
+
+	ct = osr.CoordinateTransformation(source_srs, target_srs)
+	has_elevation = False
+	if len(coord_list[0]) > 2:
+		has_elevation = True
+
+	for coord in coord_list:
+		x, y = coord[:2]
+		if has_elevation:
+			z = coord[2]
+			yield ct.TransformPoint(x, y, z)
+		else:
+			yield ct.TransformPoint(x, y)[:2]
+
+
+def transform_array_coordinates(source_srs, target_srs, x_source, y_source, z_source=None):
+	"""
+	Transform (reproject) coordinates in separate arrays
+
+	:param source_srs:
+		osr SpatialReference object: source coordinate system
+	:param target_srs:
+		osr SpatialReference object: target coordinate system
+	:param x_source:
+		1-D float array, input coordinate array representing x coordinates
+		(longitudes or eastings) of a meshed grid
+	:param y_source:
+		1-D float array, input coordinate array representing y coordinates
+		(latitudes or northings) of a meshed grid
+	:param z_source:
+		1-D float array, input coordinate array representing z coordinates
+		(default: None)
+
+	:return:
+		(x, y, [z]) tuple of 1-D float arrays: output coordinate arrays
+	"""
+	ct = osr.CoordinateTransformation(source_srs, target_srs)
+
+	if z_source is None or len(z_source) == 0:
+		has_elevation = False
+		xyz_source = np.column_stack([x_source, y_source])
+	else:
+		has_elevation = True
+		xyz_source = np.column_stack([x_source, y_source, z_source])
+
+	xyz_target = np.array(ct.TransformPoints(xyz_source)).T
+
+	if has_elevation:
+		return xyz_target[0], xyz_target[1], xyz_target[2]
+	else:
+		return xyz_target[0], xyz_target[1]
+
+
 def transform_mesh_coordinates(source_srs, target_srs, x_source, y_source):
 	"""
-	Transform meshed coordinates
+	Transform (reproject) meshed coordinates
 	Source: http://stackoverflow.com/questions/20488765/plot-gdal-raster-using-matplotlib-basemap
 
 	:param source_srs:
