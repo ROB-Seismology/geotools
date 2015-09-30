@@ -10,7 +10,7 @@ gdal.UseExceptions()
 
 
 def write_single_band_geotiff(out_filespec, data, extent, srs, cell_registration="center",
-								north_up=False, nodata_value=np.nan):
+								north_up=False, nodata_value=np.nan, compression='LZW'):
 	"""
 	Write data array to single-band GeoTiff
 
@@ -34,6 +34,9 @@ def write_single_band_geotiff(out_filespec, data, extent, srs, cell_registration
 	:param nodata_value:
 		float, value to use for "no data"
 		(default: np.nan)
+	:param compression:
+		str, GDAL option to compress TIF files
+		(default: 'LZW')
 	"""
 	## Order of rows should be north to south, otherwise image is upside down
 	if not north_up:
@@ -52,7 +55,9 @@ def write_single_band_geotiff(out_filespec, data, extent, srs, cell_registration
 		dy = (ymax - ymin) / float(ny)
 
 	driver = gdal.GetDriverByName("Gtiff")
-	ds = driver.Create(out_filespec, nx, ny, 1, gdal.GDT_Float32)
+	if compression:
+		ds_options = ['COMPRESS=%s' % compression.upper()]
+	ds = driver.Create(out_filespec, nx, ny, 1, gdal.GDT_Float32, options=ds_options)
 
 	## Affine transform takes 6 parameters:
 	## top left x, cell size x, rotation, top left y, rotation, cell size y
@@ -71,10 +76,11 @@ def write_single_band_geotiff(out_filespec, data, extent, srs, cell_registration
 	band.SetNoDataValue(nodata_value)
 	band.ComputeStatistics()
 	ds.FlushCache()
+	ds = None
 
 
 def write_multi_band_geotiff(out_filespec, img, extent, srs, cell_registration="corner",
-								north_up=True):
+								north_up=True, compression='LZW'):
 	"""
 	Write image data to multi-band GeoTiff
 
@@ -96,6 +102,9 @@ def write_multi_band_geotiff(out_filespec, img, extent, srs, cell_registration="
 		bool, whether or not 2nd dimension of :param:`data` is north-up
 		(i.e., going from xmax to xmin)
 		(default: True)
+	:param compression:
+		str, GDAL option to compress TIF files
+		(default: 'LZW')
 	"""
 	if isinstance(img, PIL.Image.Image):
 		img_ar = np.array(img)
@@ -119,7 +128,9 @@ def write_multi_band_geotiff(out_filespec, img, extent, srs, cell_registration="
 		dy = (ymax - ymin) / float(ny)
 
 	driver = gdal.GetDriverByName("Gtiff")
-	ds = driver.Create(out_filespec, nx, ny, num_bands, gdal.GDT_Byte)
+	if compression:
+		ds_options = ['COMPRESS=%s' % compression.upper()]
+	ds = driver.Create(out_filespec, nx, ny, num_bands, gdal.GDT_Byte, options=ds_options)
 
 	## Affine transform takes 6 parameters:
 	## top left x, cell size x, rotation, top left y, rotation, cell size y
@@ -137,6 +148,7 @@ def write_multi_band_geotiff(out_filespec, img, extent, srs, cell_registration="
 		band = ds.GetRasterBand(i+1)
 		band.WriteArray(img_ar[:,:,i])
 	ds.FlushCache()
+	ds = None
 
 # VRT rasters:
 # http://sgillies.net/blog/2014/02/25/warping-images-with-rasterio.html
