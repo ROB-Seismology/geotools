@@ -23,6 +23,8 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 		- keys corresponding to data attribute names
 	"""
 	## Construct WGS84 projection system
+	from mapping.geo.coordtrans import lambert1972
+
 	wgs84 = osr.SpatialReference()
 	wgs84.SetWellKnownGeogCS("WGS84")
 
@@ -46,6 +48,15 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 
 	## Set up transformation between table coordsys and wgs84
 	tab_sr = layer.GetSpatialRef()
+
+	## Hack to fix earlier MapInfo implementation of Lambert1972
+	if 'DATUM["Belgium_Hayford"' in tab_sr.ExportToWkt():
+		if tab_sr.IsProjected():
+			print("Fixing older MapInfo implementation of Lambert1972...")
+			tab_sr = lambert1972
+		else:
+			print("Warning: older MapInfo implementation of Lambert1972, coordinates may be shifted!")
+		#tab_sr.CopyGeogCSFrom(lambert1972)
 	coordTrans = osr.CoordinateTransformation(tab_sr, wgs84)
 
 	## Loop over features in layer
