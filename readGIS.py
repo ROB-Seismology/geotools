@@ -50,7 +50,7 @@ def read_GIS_file(GIS_filespec, layer_num=0, verbose=True):
 	tab_sr = layer.GetSpatialRef()
 
 	## Hack to fix earlier MapInfo implementation of Lambert1972
-	if 'DATUM["Belgium_Hayford"' in tab_sr.ExportToWkt():
+	if os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and 'DATUM["Belgium_Hayford"' in tab_sr.ExportToWkt():
 		if tab_sr.IsProjected():
 			print("Fixing older MapInfo implementation of Lambert1972...")
 			tab_sr = lambert1972
