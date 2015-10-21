@@ -15,6 +15,25 @@ lambert1972 = osr.SpatialReference()
 lambert1972.ImportFromWkt(lambert_wkt)
 
 
+def get_epsg_srs(epsg_code):
+	"""
+	Get spatial reference from EPSG code
+
+	:param epsg_code:
+		str or int, EPSG code (e.g., "EPSG:3857", "3857" or 3857)
+
+	:return:
+		Instance of :class:`osr.SpatialReference`
+	"""
+	if isinstance(epsg_code, (str, unicode)):
+		if epsg_code[:5] == "EPSG:":
+			epsg_code = epsg_code.split(':')[1]
+		epsg_code = int(epsg_code)
+	srs = osr.SpatialReference()
+	srs.ImportFromEPSG(epsg_code)
+	return srs
+
+
 def get_utm_spec(lon, lat):
 	"""
 	Determine UTM zone and hemisphere
