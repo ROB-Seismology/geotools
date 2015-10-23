@@ -5,7 +5,7 @@ import ogr, osr
 from mapping.geo.coordtrans import wgs84
 
 
-def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", verbose=True):
+def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fix_mi_lambert=True, verbose=True):
 	"""
 	Read GIS file.
 
@@ -21,6 +21,10 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", ve
 	:param encoding:
 		str, unicode encoding
 		(default: "guess", will try to guess, but this may fail)
+	:param fix_mi_lambert:
+		bool, whether or not to apply spatial reference system fix for
+		old MapInfo files in Lambert 1972 system
+		(default: True)
 	:param verbose:
 		Boolean, whether or not to print information while reading
 		GIS table (default: True)
@@ -69,15 +73,16 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", ve
 	tab_srs = layer.GetSpatialRef()
 
 	## Hack to fix earlier MapInfo implementation of Lambert1972
-	if os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and 'DATUM["Belgium_Hayford"' in tab_srs.ExportToWkt():
-		from mapping.geo.coordtrans import lambert1972
-		if tab_srs.IsProjected():
-			print("Fixing older MapInfo implementation of Lambert1972...")
-			tab_srs = lambert1972
-		else:
-			# TODO
-			print("Warning: older MapInfo implementation of Lambert1972, coordinates may be shifted!")
-		#tab_srs.CopyGeogCSFrom(lambert1972)
+	if fix_mi_lambert:
+		if os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and 'DATUM["Belgium_Hayford"' in tab_srs.ExportToWkt():
+			from mapping.geo.coordtrans import lambert1972
+			if tab_srs.IsProjected():
+				print("Fixing older MapInfo implementation of Lambert1972...")
+				tab_srs = lambert1972
+			else:
+				# TODO
+				print("Warning: older MapInfo implementation of Lambert1972, coordinates may be shifted!")
+			#tab_srs.CopyGeogCSFrom(lambert1972)
 
 	if out_srs:
 		coordTrans = osr.CoordinateTransformation(tab_srs, out_srs)
