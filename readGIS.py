@@ -34,6 +34,7 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 		Each record contains the following keys:
 		- 'obj': corresponding value is instance of :class:`osgeo.ogr.Geometry`
 			with all coordinates in spatial reference system in :param:`out_srs`
+		- '#': sequence number
 		- keys corresponding to data attribute names
 		Note that keys and string values are decoded into unicode
 		if :param:`encoding' is not set
@@ -100,6 +101,7 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 
 		## Silently ignore empty rows
 		if feature:
+			feature_data['#'] = i
 			## Get geometry
 			## Note: we need to clone the geometry returned by GetGeometryRef(),
 			## otherwise python will crash
