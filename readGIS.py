@@ -54,6 +54,8 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 	## See: https://nelsonslog.wordpress.com/2015/01/15/ogrpython-vs-unicode/
 	## and https://github.com/openaddresses/machine/blob/e5099e5a23b8ab6571227c5f8487034c8a8b7cc2/openaddr/conform.py#L213
 	# TODO: isn't there a more robust way?
+	# See http://gis.stackexchange.com/questions/7608/shapefile-prj-to-postgis-srid-lookup-table
+	# for shapefiles
 	if encoding == "guess":
 		from locale import getpreferredencoding
 		ogr_recoding = layer.TestCapability(ogr.OLCStringsAsUTF8)
