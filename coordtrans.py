@@ -375,6 +375,130 @@ def lonlat_to_ECEF2(coord_list):
 	return transform_coordinates(wgs84, ecef, coord_list)
 
 
+def wkt2epsg(wkt, tolerance=1E-05):
+	"""
+	Transform a WKT string to an EPSG code
+	Modified from: http://gis.stackexchange.com/questions/20298/is-it-possible-to-get-the-epsg-value-from-an-osr-spatialreference-class-using-th
+
+	:param wkt:
+		str, WKT definition
+	:param tolerance:
+		float, tolerance to accept projection parameters as equal
+
+	:return:
+		int, EPSG code
+	"""
+
+	import os
+	import numpy as np
+	import pyproj
+	import osr
+
+	epsg = os.path.join(pyproj.pyproj_datadir, "epsg")
+
+	def proj_string_to_dict(proj_str):
+		"""
+		Convert proj string to a dictionary
+		"""
+		fields = proj_str.split()
+		proj_dict = {}
+		for f in fields:
+			if not '<>' in f:
+				try:
+					key, val = f.split('=')
+				except:
+					key, val = f, None
+				else:
+					try:
+						val = int(val)
+					except:
+						try:
+							val = float(val)
+						except:
+							pass
+				proj_dict[key] = val
+		return proj_dict
+
+	def match_proj_dicts(proj_dict1, proj_dict2, general_keys_only=False):
+		"""
+		Match 2 proj dictionaries. We only take into account parameters
+		from the 2nd argument.
+
+		:return:
+			bool, whether or not there is a match
+		"""
+		general_keys = ['+proj', '+ellps', '+units']
+		for key in general_keys:
+			if proj_dict1.get(key) != proj_dict2.get(key):
+				return False
+		if general_keys_only:
+			return True
+
+		other_keys = set(proj_dict2.keys()).difference(set(general_keys))
+		for key in other_keys:
+			val1, val2 = proj_dict1.get(key), proj_dict2.get(key)
+			if isinstance(val1, (int, float)):
+				if not np.allclose(val1, val2 ,atol=tolerance):
+					return False
+			else:
+				if val1 != val2:
+					return False
+		return True
+
+	code = None
+	p_in = osr.SpatialReference()
+	s = p_in.ImportFromWkt(wkt)
+	if s == 5:  # invalid WKT
+		return None
+	if p_in.IsLocal() == 1:  # this is a local definition
+		return p_in.ExportToWkt()
+	if p_in.IsGeographic() == 1:  # this is a geographic srs
+		cstype = 'GEOGCS'
+	else:  # this is a projected srs
+		cstype = 'PROJCS'
+	p_in.AutoIdentifyEPSG()
+	an = p_in.GetAuthorityName(cstype)
+	ac = p_in.GetAuthorityCode(cstype)
+	if an == 'EPSG' and ac is not None:  # return the EPSG code
+		return ac
+
+	else:
+		## try brute force approach by grokking proj epsg definition file
+		from collections import OrderedDict
+		p_out = p_in.ExportToProj4()
+		if p_out:
+			proj_epsg = OrderedDict()
+			with open(epsg) as f:
+				for line in f:
+					try:
+						code, proj_str = line.split('>', 1)
+					except:
+						pass
+					else:
+						code = int(code[1:])
+						if proj_str.find(p_out) != -1:
+							## Literal match
+							return code
+						proj_dict = proj_string_to_dict(proj_str.strip())
+						proj_epsg[code] = proj_dict
+
+			p_out_dict = proj_string_to_dict(p_out)
+			for code, proj_dict in proj_epsg.items():
+				match = match_proj_dicts(proj_dict, p_out_dict)
+				if not match:
+					## Try swapping standard parallels
+					if match_proj_dicts(proj_dict, p_out_dict, general_keys_only=True):
+						try:
+							lat1, lat2 = p_out_dict['+lat_1'], p_out_dict['+lat_2']
+						except:
+							pass
+						else:
+							p_out_dict['+lat_1'] = lat2
+							p_out_dict['+lat_2'] = lat1
+							match = match_proj_dicts(proj_dict, p_out_dict)
+				if match:
+					return code
+
 
 if __name__ == "__main__":
 	## Should return 66333.00 222966.00
@@ -392,4 +516,3 @@ if __name__ == "__main__":
 	## Should return -2430880.68434096 -4770871.96871711 3453958.6411779
 	coord_list = [(-117, 33, 0)]
 	print lonlat_to_ECEF2(coord_list)
-
