@@ -4,6 +4,7 @@ Some functions related to DGPS processing with rtklib
 
 import os
 import subprocess
+import numpy as np
 
 from mapping.geo.coordtrans import lonlat_to_lambert1972
 
@@ -122,12 +123,23 @@ def rtklib_pos_to_lambert(pos_filespec, overwrite=False):
 					elevs.append(h)
 					other_infos.append(", ".join(fields[6:]))
 
+			lons = np.array(lons)
+			lats = np.array(lats)
+			elevs = np.array(elevs)
+
 		if height == "geodetic":
+			print("Warning: Geodetic elevations may not correspond to TAW!")
 			X, Y = zip(*lonlat_to_lambert1972(zip(lons, lats)))
 			Z = elevs
 		elif height == "ellipsoidal":
 			# Note: this appears incorrect!
-			X, Y, Z = zip(*lonlat_to_lambert1972(zip(lons, lats, elevs)))
+			#X, Y, Z = zip(*lonlat_to_lambert1972(zip(lons, lats, elevs)))
+
+			## Z_TAW = Z_ETRS89 - hBG03
+			import mapping.Basemap as lbm
+			hBG03_filespec = r"D:\seismo-gis\collections\NGI_hBG03\XYZ\hBG03.XYZ"
+			hBG03_grd = lbm.GdalRasterData(hBG03_filespec)
+			Z = elevs - hBG03_grd.interpolate(lons, lats)
 
 		out_filespec = os.path.splitext(pos_filespec)[0] + '.lam'
 		if not os.path.exists(out_filespec) or overwrite:
@@ -163,6 +175,7 @@ if __name__ == "__main__":
 
 	#exit()
 
+	folder = r"D:\Data\Sites\Grote Brogel\2015-08-25 - Maarlo\GPS"
 	rtklib_pos_to_lambert(folder, overwrite=True)
 
 	exit()
