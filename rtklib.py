@@ -38,8 +38,8 @@ def rtkpost(rover_obs_file, ref_obs_file, ref_nav_files, conf_file, split_file="
 	cmd_list = []
 	if not split_file:
 		pos_file = os.path.splitext(rover_obs_file)[0] + '.pos'
-		cmd = '%s -k "%s" -o "%s" "%s" %s'
-		cmd %= (rnx2rtkp, conf_file, pos_file, rover_obs_file, ref_obs_file, "".join(['"%s"' % f for f in ref_nav_files]))
+		cmd = '%s -k "%s" -o "%s" "%s" %s %s'
+		cmd %= (rnx2rtkp, conf_file, pos_file, rover_obs_file, ref_obs_file, " ".join(['"%s"' % f for f in ref_nav_files]))
 		cmd_list.append(cmd)
 	else:
 		base_cmd = '%s -k "%s" -o POS_FILE TIME_STUB "%s" "%s" %s'
@@ -68,6 +68,7 @@ def rtkpost(rover_obs_file, ref_obs_file, ref_nav_files, conf_file, split_file="
 		#for line in errdata:
 		#	print line
 		child.wait()
+
 
 
 def rtklib_pos_to_lambert(pos_filespec, overwrite=False):
@@ -127,10 +128,13 @@ def rtklib_pos_to_lambert(pos_filespec, overwrite=False):
 			lats = np.array(lats)
 			elevs = np.array(elevs)
 
+		X, Y = zip(*lonlat_to_lambert1972(zip(lons, lats)))
+
 		if height == "geodetic":
-			print("Warning: Geodetic elevations may not correspond to TAW!")
-			X, Y = zip(*lonlat_to_lambert1972(zip(lons, lats)))
-			Z = elevs
+			print("Warning: Conversion of geodetic elevation to TAW may not be precise!")
+			## According to NGI, EGM2008 geoid (mean sea level) is 2.31 m above
+			## TAW (mean low-tide level)
+			Z = elevs + 2.31
 		elif height == "ellipsoidal":
 			# Note: this appears incorrect!
 			#X, Y, Z = zip(*lonlat_to_lambert1972(zip(lons, lats, elevs)))
@@ -164,24 +168,43 @@ def rtklib_pos_to_lambert(pos_filespec, overwrite=False):
 
 
 if __name__ == "__main__":
+	import datetime
 	folder = r"D:\Data\Sites\Grote Brogel\2015-10-29-30 - Galgenstraat Bree\DGPS"
 
-	rover_obs_file = os.path.join(folder, "PROF5.o")
-	ref_obs_file = os.path.join(folder, "Flepos", "MAAS3030.15o")
-	ref_nav_files = [os.path.join(folder, "Flepos", "MAAS3030.%s" % ext) for ext in ("15n",)]
-	split_file = os.path.join(folder, "PROF5.csv")
 	conf_file = os.path.join(folder, "rtkpost.conf")
-	#rtkpost(rover_obs_file, ref_obs_file, ref_nav_files, conf_file, split_file=split_file)
 
-	#exit()
+	filenames = os.listdir(folder)
+	for filename in filenames:
+		basename, ext = os.path.splitext(filename)
+		if ext.lower() == '.o':
+			rover_sbf_file = os.path.join(folder, basename + '.SBF')
+			timestamp = os.path.getmtime(rover_sbf_file)
+			dt = datetime.datetime.fromtimestamp(timestamp)
+			tt = dt.timetuple()[:3]
+			if tt == (2015, 10, 29):
+				ref_obs_file = os.path.join(folder, "Flepos", "MAAS3020.15o")
+				ref_nav_files = [os.path.join(folder, "Flepos", "MAAS3020.%s" % ext) for ext in ("15n",)]
+			elif tt == (2015, 10, 30):
+				ref_obs_file = os.path.join(folder, "Flepos", "MAAS3030.15o")
+				ref_nav_files = [os.path.join(folder, "Flepos", "MAAS3030.%s" % ext) for ext in ("15n",)]
+
+			rover_obs_file = os.path.join(folder, filename)
+			split_file = os.path.join(folder, os.path.splitext(filename)[0] + '.csv')
+			if not os.path.exists(split_file):
+				split_file = ""
+			rtkpost(rover_obs_file, ref_obs_file, ref_nav_files, conf_file, split_file=split_file)
+
+			pos_filespec = os.path.join(folder, os.path.splitext(filename)[0] + '.pos')
+	rtklib_pos_to_lambert(folder)
+	exit()
 
 	folder = r"D:\Data\Sites\Grote Brogel\2015-08-25 - Maarlo\GPS"
-	rtklib_pos_to_lambert(folder, overwrite=True)
+	#rtklib_pos_to_lambert(folder, overwrite=False)
 
 	exit()
 
 	filenames = os.listdir(folder)
-	filenames = [os.path.join(folder, "REF01_ellipsoidal.pos")]
+	#filenames = [os.path.join(folder, "REF01_ellipsoidal.pos")]
 	for filename in filenames:
 		if os.path.splitext(filename)[-1].lower() == '.pos':
 			pos_filespec = os.path.join(folder, filename)
