@@ -30,6 +30,8 @@ def rtkpost(rover_obs_file, ref_obs_file, ref_nav_files, conf_file, split_file="
 		(default: "")
 	"""
 	rnx2rtkp = os.path.join(RTKLIB_FOLDER, "bin", "rnx2rtkp.exe")
+	if not os.path.exists(rnx2rtkp):
+		raise Exception("rnx2rtkpp executable not found in %s" % RTKLIB_FOLDER)
 	folder = os.path.split(rover_obs_file)[0]
 	rover_obs_file = os.path.relpath(rover_obs_file, folder)
 	ref_obs_file = os.path.relpath(ref_obs_file, folder)
@@ -169,6 +171,16 @@ def rtklib_pos_to_lambert(pos_filespec, overwrite=False):
 
 if __name__ == "__main__":
 	import datetime
+
+	folder = r"D:\Data\Sites\Grote Brogel\2015-08-25 - Maarlo\GPS"
+	rover_obs_file = os.path.join(folder, "Maarlo_1.o")
+	ref_obs_file = os.path.join(folder, "FLEPOS", "NEER237M.15o")
+	ref_nav_files = [os.path.join(folder, "FLEPOS", "NEER237M.15n")]
+	conf_file = os.path.join(folder, "Maarlo_rtkpost.conf")
+	rtkpost(rover_obs_file, ref_obs_file, ref_nav_files, conf_file)
+
+	exit()
+
 	folder = r"D:\Data\Sites\Grote Brogel\2015-10-29-30 - Galgenstraat Bree\DGPS"
 
 	conf_file = os.path.join(folder, "rtkpost.conf")
