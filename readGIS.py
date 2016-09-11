@@ -108,23 +108,28 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 			## Note: we need to clone the geometry returned by GetGeometryRef(),
 			## otherwise python will crash
 			## See http://trac.osgeo.org/gdal/wiki/PythonGotchas
-			geom = feature.GetGeometryRef().Clone()
-			geom.AssignSpatialReference(tab_srs)
-			if coordTrans:
-				geom.Transform(coordTrans)
-			#geom.CloseRings()
-			feature_data['obj'] = geom
+			try:
+				geom = feature.GetGeometryRef().Clone()
+			except:
+				## Silently ignore
+				pass
+			else:
+				geom.AssignSpatialReference(tab_srs)
+				if coordTrans:
+					geom.Transform(coordTrans)
+				#geom.CloseRings()
+				feature_data['obj'] = geom
 
-			## Get feature attributes
-			for i, field_name in enumerate(field_names):
-				value = feature.GetField(i)
-				## Convert field names and string values to unicode
-				if encoding:
-					field_name = field_name.decode(encoding)
-					if isinstance(value, str):
-						value = value.decode(encoding)
-				feature_data[field_name] = value
-			records.append(feature_data)
+				## Get feature attributes
+				for i, field_name in enumerate(field_names):
+					value = feature.GetField(i)
+					## Convert field names and string values to unicode
+					if encoding:
+						field_name = field_name.decode(encoding)
+						if isinstance(value, str):
+							value = value.decode(encoding)
+					feature_data[field_name] = value
+				records.append(feature_data)
 	return records
 
 
