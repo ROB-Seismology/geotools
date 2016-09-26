@@ -1,91 +1,188 @@
-"""
-Module containing common geodetic formulas
-"""
-
-#!/usr/bin/env python
-
-import math
+import numpy as np
 
 
-def distance(origin, destination):
-    """
-    Source: http://www.platoscave.net/blog/2009/oct/5/calculate-distance-latitude-longitude-python/
-    # Haversine formula example in Python
-    # Author: Wayne Dyck
-    """
-    lon1, lat1 = origin[:2]
-    lon2, lat2 = destination[:2]
-    radius = 6371 # km
-
-    dlat = math.radians(lat2-lat1)
-    dlon = math.radians(lon2-lon1)
-    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
-        * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    d = radius * c
-
-    return d
+## Earth's radius in km
+earth_radius = 6371.
 
 
-def bearing(pointA, pointB):
-    """
-    Calculate the compass bearing between two points.
-    Source: https://gist.github.com/2005586
+def cartesian_distance(x1, y1, x2, y2):
+	"""
+	Compute distance between two points in cartesian coordinates.
 
-    :Parameters:
-        - `pointA: The tuple representing the longitude/latitude for the
-        first point. Latitude and longitude must be in decimal degrees
-        - `pointB: The tuple representing the longitude/latitude for the
-        second point. Latitude and longitude must be in decimal degrees
+	:param x1:
+		Float or numpy array, x coordinate(s) of point(s) A (origin)
+	:param y1:
+		Float or numpy array, y coordinate(s) of point(s) A (origin)
+	:param x2:
+		Float or numpy array, x coordinate(s) of point(s) B (destination)
+	:param y2:
+		Float or numpy array, y coordinate(s) of point(s) B (destination)
 
-    :Returns:
-        The bearing in degrees
-
-    :Returns Type:
-        float
-    """
-    if (type(pointA) != tuple) or (type(pointB) != tuple):
-        raise TypeError("Only tuples are supported as arguments")
-
-    lat1 = math.radians(pointA[1])
-    lat2 = math.radians(pointB[1])
-
-    dlon = math.radians(pointB[0] - pointA[0])
-
-    x = math.sin(dlon) * math.cos(lat2)
-    y = math.cos(lat1) * math.sin(lat2) - (math.sin(lat1) * math.cos(lat2) * math.cos(dlon))
-
-    initial_bearing = math.atan2(x, y)
-
-    # Now we have the initial bearing but math.atan2 return values
-    # from -180 to + 180 which is not what we want for a compass bearing
-    # The solution is to normalize the initial bearing as shown below
-    initial_bearing = math.degrees(initial_bearing)
-    compass_bearing = (initial_bearing + 360) % 360
-
-    return compass_bearing
+	:return:
+		Float or numpy array, distance in same units as input coordinates
+	"""
+	return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 
-def get_point_at(origin, distance, azimuth):
-    """
-    Get point at given distance and azimuth from origin.
+def spherical_distance(lon1, lat1, lon2, lat2):
+	"""
+	Compute distance between two points using the haversine formula.
+	Modified from: Source: http://www.platoscave.net/blog/2009/oct/5/calculate-distance-latitude-longitude-python/
 
-    :param origin:
-        (lon, lat) tuple in degrees
-    :param distance:
-        distance in km
-    :param azimuth:
-        azimuth in degrees
-    """
-    lon1, lat1 = origin[:2]
-    lon1, lat1 = math.radians(lon1), math.radians(lat1)
-    azimuth = math.radians(azimuth)
-    pi = math.pi
+	:param lon1:
+		Float or numpy array, longitude(s) of point(s) A in decimal degrees
+	:param lat1:
+		Float or numpy array, latitude(s) of point(s) A in decimal degrees
+	:param lon1:
+		Float or numpy array, longitude(s) of point(s) B in decimal degrees
+	:param lat1:
+		Float or numpy array, latitude(s) of point(s) B in decimal degrees
 
-    earth_radius = 6371.
-    b = distance / earth_radius
-    a = math.acos(math.cos(b) * math.cos(pi/2-lat1) + math.sin(pi/2-lat1) * math.sin(b) * math.cos(azimuth))
-    B = math.asin(math.sin(b) * math.sin(azimuth) / math.sin(a))
-    lat2 = 90 - math.degrees(a)
-    lon2 = math.degrees(lon1 + B)
-    return (lon2, lat2)
+	:return:
+		Float or numpy array, distance in m
+	"""
+	dlat = np.radians(lat2 - lat1)
+	dlon = np.radians(lon2 - lon1)
+	a = np.sin(dlat/2) * np.sin(dlat/2) + np.cos(np.radians(lat1)) \
+		* np.cos(np.radians(lat2)) * np.sin(dlon/2) * np.sin(dlon/2)
+	c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
+	d = earth_radius * c
+	return d * 1000.
+
+
+def cartesian_azimuth(x1, y1, x2, y2):
+	"""
+	Compute azimuth between two points in cartesian coordinates.
+
+	:param x1:
+		Float or numpy array, x coordinate(s) of point(s) A
+	:param y1:
+		Float or numpy array, y coordinate(s) of point(s) A
+	:param x2:
+		Float or numpy array, x coordinate(s) of point(s) B
+	:param y2:
+		Float or numpy array, y coordinate(s) of point(s) B
+
+	:return:
+		Float or numpy array, azimuth in degrees
+	"""
+	angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+	bearing = (90 - angle) % 360
+	return bearing
+
+
+def spherical_azimuth(lon1, lat1, lon2, lat2):
+	"""
+	Calculate the compass bearing between two points.
+	Modified from: https://gist.github.com/2005586
+
+	:param lon1:
+		Float or numpy array: longitude(s) of point(s) A in decimal degrees
+	:param lat1:
+		Float or numpy array: latitude(s) of point(s) A in decimal degrees
+	:param lon1:
+		Float or numpy array: longitude(s) of point(s) B in decimal degrees
+	:param lat1:
+		Float or numpy array: latitude(s) of point(s) B in decimal degrees
+
+	:return:
+		Float or numpy array, compass bearing in degrees
+	"""
+	lat1 = np.radians(lat1)
+	lat2 = np.radians(lat2)
+	dlon = np.radians(lon2 - lon1)
+
+	x = np.sin(dlon) * np.cos(lat2)
+	y = np.cos(lat1) * np.sin(lat2) - (np.sin(lat1) * np.cos(lat2) * np.cos(dlon))
+	initial_bearing = np.arctan2(x, y)
+
+	# Now we have the initial bearing but np.arctan2 return values
+	# from -180 to + 180 degrees which is not what we want for a compass bearing
+	# The solution is to normalize the initial bearing as shown below
+	initial_bearing = np.degrees(initial_bearing)
+	compass_bearing = (initial_bearing + 360) % 360
+	return compass_bearing
+
+
+def cartesian_point_at(x1, y1, distance, azimuth):
+	"""
+	Compute coordinates of point at given distance and azimuth
+	from origin in cartesian coordinates.
+	Note: only one of (x1, y1), distance or azimuth may be a
+	numpy array. If one is an array, the others must be floats.
+
+	:param x1:
+		Float or numpy array, X coordinate(s) of origin
+	:param y1:
+		Float or numpy array, Y coordinate(s) of origin
+	:param distance:
+		Float or numpy array, distance in same units as input coordinates
+	:param azimuth:
+		Float or numpy array, azimuth in degrees
+
+	:return:
+		Tuple (x2, y2) of floats or numpy arrays containing
+		X and Y coordinates of point(s)
+	"""
+	azimuth = np.radians(azimuth)
+	x2 = x1 + distance * np.sin(azimuth)
+	y2 = y1 + distance * np.cos(azimuth)
+	return (x2, y2)
+
+
+def spherical_point_at(lon1, lat1, distance, azimuth):
+	"""
+	Compute coordinates of point at given distance and azimuth
+	from origin in spherical coordinates.
+	Note: only one of (lon1, lat1), distance or azimuth may be a
+	numpy array. If one is an array, the others must be floats.
+
+	:param lon1:
+		Float or numpy array, longitude(s) of origin in degrees
+	:param lat1:
+		Float or numpy array, latitude(s) of origin in degrees
+	:param distance:
+		Float or numpy array, distance in m
+	:param azimuth:
+		Float or numpy array, azimuth in degrees
+
+	:return:
+		Tuple (lon2, lat2) of floats or numpy arrays containing
+		longitude(s) and latitude(s) of point(s)
+	"""
+	lon1, lat1 = np.radians(lon1), np.radians(lat1)
+	azimuth = np.radians(azimuth)
+	half_pi = np.pi / 2
+
+	b = distance / (earth_radius * 1000)
+	sin_b = np.sin(b)
+	a = np.arccos(np.cos(b) * np.cos(half_pi-lat1) + np.sin(half_pi-lat1) * sin_b * np.cos(azimuth))
+	B = np.arcsin(sin_b * np.sin(azimuth) / np.sin(a))
+	lat2 = 90 - np.degrees(a)
+	lon2 = np.degrees(lon1 + B)
+	return (lon2, lat2)
+
+
+def mean_azimuth(azimuths, weights=None):
+	"""
+	Compute weighted mean azimuth
+	Modified from: http://positivelyglorious.com/software-media/averages-of-azimuths/
+
+	:param azimuth:
+		List or numpy array, azimuths in degrees
+	:param weights:
+		List or numpy array, corresponding weights (default: None)
+
+	:return:
+		Float, mean azimuth in degrees
+	"""
+	rad_azimuths = np.radians(azimuths)
+	## Mean Y component
+	sa = np.average(np.sin(rad_azimuths), weights=weights)
+	## Mean X component
+	ca = np.average(np.cos(rad_azimuths), weights=weights)
+	## Take the arctan of the averages, convert to degrees,
+	## and constrain to (0, 360)
+	mean_azimuth = np.degrees(np.arctan2(sa, ca))
+	mean_azimuth = (mean_azimuth + 360) % 360
+	return mean_azimuth
