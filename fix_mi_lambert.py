@@ -108,7 +108,7 @@ def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
 			out_ds.Destroy()
 
 		else:
-			# TODO
+			## Longitude / Latitude (Belgium): does not seem to be problematic
 			print("Warning: %s has older MapInfo implementation of Lambert1972, not fixed!" % mi_filespec)
 
 
@@ -166,6 +166,6 @@ if __name__ == "__main__":
 	#backup_mi_file(mi_filespec, r"C:\Temp\MI\QUAT_18_BREUK (old lambert72).tab", overwrite=True)
 
 	#fix_mi_lambert_ogr(mi_filespec)
-	folder = r"C:\Temp\MI\Quaternary"
+	folder = r"D:\GIS-data\Paleosis\Digitized\17-8-Peer"
 	fix_mi_lambert_folder_ogr(folder)
 
