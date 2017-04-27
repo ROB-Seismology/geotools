@@ -205,3 +205,29 @@ def read_GIS_file_shapes(GIS_filespec, layer_num=0):
 				shapes.add("polygons")
 
 	return list(shapes)
+
+
+def read_GIS_srs(GIS_filespec, layer_num=0):
+	"""
+	Read GIS SRS.
+
+	:param GIS_filespec:
+		String, full path to GIS file to read
+	:param layer_num:
+		Integer, index of layer to read (default: 0)
+
+	:return:
+		ogr SpatialReferenceSystem.
+	"""
+	ds = ogr.Open(GIS_filespec, 0)
+	if ds is None:
+		raise Exception("OGR failed to open %s" % GIS_filespec)
+	num_layers = ds.GetLayerCount()
+
+	if layer_num < num_layers:
+		layer = ds.GetLayer(layer_num)
+	else:
+		raise Exception("File contains less than %d layers!" % layer_num)
+
+	return layer.GetSpatialRef()
+
