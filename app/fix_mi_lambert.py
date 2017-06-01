@@ -29,7 +29,7 @@ def backup_mi_file(mi_filespec, backup_filespec="", overwrite=False):
 
 
 def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
-	from mapping.geo.coordtrans import lambert1972
+	from mapping.geotools.coordtrans import lambert1972
 
 	in_ds = ogr.Open(mi_filespec, 0)
 

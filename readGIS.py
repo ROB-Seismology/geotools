@@ -2,7 +2,7 @@ import os
 
 import ogr, osr
 
-from mapping.geo.coordtrans import wgs84
+from coordtrans import wgs84
 
 
 def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fix_mi_lambert=True, verbose=True):
