@@ -122,10 +122,17 @@ def fix_mi_lambert(mi_filespec, overwrite_backup=False):
 	bounds = coordsys.GetBounds()
 	coordsys.DropBounds()
 
-	old_lambert_clause = 'CoordSys Earth Projection 19, 110, "m", 4.3569397222, 90.0, 49.8333333333, 51.1666666667, 150000.01256, 5400088.4378'
-	new_lambert_clause = 'CoordSys Earth Projection 3, 1019, "m", 4.3674866667, 90.0, 49.8333339, 51.1666672333, 150000.013, 5400088.438'
+	old_lambert_clauses = ['CoordSys Earth Projection 1, 110',
+		'CoordSys Earth Projection 19, 110, "m", 4.3569397222, 90.0, 49.8333333333, 51.1666666667, 150000.01256, 5400088.4378']
+	new_lambert_clauses = ['CoordSys Earth Projection 1, 1019',
+		'CoordSys Earth Projection 3, 1019, "m", 4.3674866667, 90.0, 49.8333339, 51.1666672333, 150000.013, 5400088.438']
 
-	if coordsys.Clause() == old_lambert_clause:
+	try:
+		idx = old_lambert_clauses.index(coordsys.Clause())
+	except:
+		tab.Close()
+	else:
+		new_lambert_clause = new_lambert_clauses[idx]
 		print("Fixing %s... with MIPython" % mi_filespec)
 
 		## Create backup first
@@ -142,11 +149,9 @@ def fix_mi_lambert(mi_filespec, overwrite_backup=False):
 		## Fix coordinate system
 		tab = app.OpenTable(mi_filespec)
 		coordsys.FromClause(new_lambert_clause)
-		coordsys.SetBounds(bounds)
+		if bounds:
+			coordsys.SetBounds(bounds)
 		tab.SetCoordsys(coordsys, backup=False)
-		tab.Close()
-
-	else:
 		tab.Close()
 
 
