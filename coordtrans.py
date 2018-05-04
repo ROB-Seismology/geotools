@@ -313,6 +313,50 @@ def utm_to_lonlat(coord_list, utm_spec="UTM31N"):
 	return transform_coordinates(utm_srs, wgs84, coord_list)
 
 
+def lonlat_to_meter(lons, lats, ref_lat=None, ellipsoidal=True):
+	"""
+	Convert geographic coordinates to meters, useful to approximate
+	short distances
+
+	See: https://en.wikipedia.org/wiki/Geographic_coordinate_system#Expressing_latitude_and_longitude_as_linear_units
+
+	:param lons:
+		array, longitudes
+	:param lats:
+		array, latitudes
+	:param ref_lat:
+		float, reference latitude
+		(default: None, will use mean of :param:`lats`)
+	:param ellipsoidal:
+		bool, whether to use ellipsoidal (WGS84) of spherical
+		Earth approximation
+		(default: True)
+
+	:return:
+		(x, y) tuple of arrays with X- and Y-coordinates
+	"""
+	if ref_lat is None:
+		ref_lat = np.mean(lats)
+	ref_lat = np.radians(ref_lat)
+
+	if not ellipsoidal:
+		## Spherical
+		m_per_deg_lat = 111133.84012073894
+		m_per_deg_lon = m_per_deg_lat * np.cos(ref_lat)
+
+	else:
+		## WGS84, accurate within a centimeter
+		m_per_deg_lat = (111132.92 - 559.82 * np.cos(ref_lat * 2)
+				+ 1.175 * np.cos(ref_lat * 4) - 0.0023 * np.cos(ref_lat * 6))
+		m_per_deg_lon = (111412.84 * np.cos(ref_lat) - 93.5 * np.cos(ref_lat * 3)
+				+ 0.118 * np.cos(ref_lat * 5))
+
+	x = lons * m_per_deg_lon
+	y = lats * m_per_deg_lat
+
+	return (x, y)
+
+
 def lonlat_to_ECEF(coord_list, a=1., e=0.):
 	"""
 	Convert geographic coordinates to earth-centered, earth-fixed coordinates
