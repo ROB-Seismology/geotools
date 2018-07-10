@@ -45,91 +45,98 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 	num_layers = ds.GetLayerCount()
 	if verbose:
 		print("Number of layers: %d" % num_layers)
-	if layer_num < num_layers:
-		layer = ds.GetLayer(layer_num)
-	else:
-		raise Exception("File contains less than %d layers!" % layer_num)
 
-	## Try to guess encoding
-	## See: https://nelsonslog.wordpress.com/2015/01/15/ogrpython-vs-unicode/
-	## and https://github.com/openaddresses/machine/blob/e5099e5a23b8ab6571227c5f8487034c8a8b7cc2/openaddr/conform.py#L213
-	# TODO: isn't there a more robust way?
-	# See http://gis.stackexchange.com/questions/7608/shapefile-prj-to-postgis-srid-lookup-table
-	# for shapefiles
-	if encoding == "guess":
-		from locale import getpreferredencoding
-		ogr_recoding = layer.TestCapability(ogr.OLCStringsAsUTF8)
-		is_shapefile = ds.GetDriver().GetName() == 'ESRI Shapefile'
+	if isinstance(layer_num, int):
+		layer_nums = [layer_num]
+	elif layer_num is None:
+		layer_nums = range(num_layers)
 
-		encoding = ((ogr_recoding and 'UTF-8')
-			or (is_shapefile and 'ISO-8859-1')
-			or getpreferredencoding())
-
-	## Get all field names
-	field_names = []
-	ld = layer.GetLayerDefn()
-	for field_index in range(ld.GetFieldCount()):
-		fd = ld.GetFieldDefn(field_index)
-		field_names.append(fd.GetName())
-
-	## Set up transformation between table coordsys and wgs84
-	tab_srs = layer.GetSpatialRef()
-
-	## Hack to fix earlier MapInfo implementation of Lambert1972
-	if fix_mi_lambert:
-		if os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and 'DATUM["Belgium_Hayford"' in tab_srs.ExportToWkt():
-			from coordtrans import lambert1972
-			if tab_srs.IsProjected():
-				print("Fixing older MapInfo implementation of Lambert1972...")
-				tab_srs = lambert1972
-			else:
-				# TODO
-				print("Warning: older MapInfo implementation of Lambert1972, coordinates may be shifted!")
-			#tab_srs.CopyGeogCSFrom(lambert1972)
-
-	if out_srs:
-		coordTrans = osr.CoordinateTransformation(tab_srs, out_srs)
-	else:
-		coordTrans = None
-
-	## Loop over features in layer
-	num_features = layer.GetFeatureCount()
-	if verbose:
-		print("Number of features in layer %d: %d" % (layer_num, num_features))
 	records = []
-	for i in range(num_features):
-		feature_data = {}
-		feature = layer.GetNextFeature()
+	for layer_num in layer_nums:
+		if layer_num < num_layers:
+			layer = ds.GetLayer(layer_num)
+		else:
+			raise Exception("File contains less than %d layers!" % layer_num)
 
-		## Silently ignore empty rows
-		if feature:
-			feature_data['#'] = i
-			## Get geometry
-			## Note: we need to clone the geometry returned by GetGeometryRef(),
-			## otherwise python will crash
-			## See http://trac.osgeo.org/gdal/wiki/PythonGotchas
-			try:
-				geom = feature.GetGeometryRef().Clone()
-			except:
-				## Silently ignore
-				pass
-			else:
-				geom.AssignSpatialReference(tab_srs)
-				if coordTrans:
-					geom.Transform(coordTrans)
-				#geom.CloseRings()
-				feature_data['obj'] = geom
+		## Try to guess encoding
+		## See: https://nelsonslog.wordpress.com/2015/01/15/ogrpython-vs-unicode/
+		## and https://github.com/openaddresses/machine/blob/e5099e5a23b8ab6571227c5f8487034c8a8b7cc2/openaddr/conform.py#L213
+		# TODO: isn't there a more robust way?
+		# See http://gis.stackexchange.com/questions/7608/shapefile-prj-to-postgis-srid-lookup-table
+		# for shapefiles
+		if encoding == "guess":
+			from locale import getpreferredencoding
+			ogr_recoding = layer.TestCapability(ogr.OLCStringsAsUTF8)
+			is_shapefile = ds.GetDriver().GetName() == 'ESRI Shapefile'
 
-				## Get feature attributes
-				for i, field_name in enumerate(field_names):
-					value = feature.GetField(i)
-					## Convert field names and string values to unicode
-					if encoding:
-						field_name = field_name.decode(encoding)
-						if isinstance(value, str):
-							value = value.decode(encoding)
-					feature_data[field_name] = value
-				records.append(feature_data)
+			encoding = ((ogr_recoding and 'UTF-8')
+				or (is_shapefile and 'ISO-8859-1')
+				or getpreferredencoding())
+
+		## Get all field names
+		field_names = []
+		ld = layer.GetLayerDefn()
+		for field_index in range(ld.GetFieldCount()):
+			fd = ld.GetFieldDefn(field_index)
+			field_names.append(fd.GetName())
+
+		## Set up transformation between table coordsys and wgs84
+		tab_srs = layer.GetSpatialRef()
+
+		## Hack to fix earlier MapInfo implementation of Lambert1972
+		if fix_mi_lambert:
+			if os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and 'DATUM["Belgium_Hayford"' in tab_srs.ExportToWkt():
+				from coordtrans import lambert1972
+				if tab_srs.IsProjected():
+					print("Fixing older MapInfo implementation of Lambert1972...")
+					tab_srs = lambert1972
+				else:
+					# TODO
+					print("Warning: older MapInfo implementation of Lambert1972, coordinates may be shifted!")
+				#tab_srs.CopyGeogCSFrom(lambert1972)
+
+		if out_srs:
+			coordTrans = osr.CoordinateTransformation(tab_srs, out_srs)
+		else:
+			coordTrans = None
+
+		## Loop over features in layer
+		num_features = layer.GetFeatureCount()
+		if verbose:
+			print("Number of features in layer %d: %d" % (layer_num, num_features))
+		for i in range(num_features):
+			feature_data = {}
+			feature = layer.GetNextFeature()
+
+			## Silently ignore empty rows
+			if feature:
+				feature_data['#'] = i
+				## Get geometry
+				## Note: we need to clone the geometry returned by GetGeometryRef(),
+				## otherwise python will crash
+				## See http://trac.osgeo.org/gdal/wiki/PythonGotchas
+				try:
+					geom = feature.GetGeometryRef().Clone()
+				except:
+					## Silently ignore
+					pass
+				else:
+					geom.AssignSpatialReference(tab_srs)
+					if coordTrans:
+						geom.Transform(coordTrans)
+					#geom.CloseRings()
+					feature_data['obj'] = geom
+
+					## Get feature attributes
+					for i, field_name in enumerate(field_names):
+						value = feature.GetField(i)
+						## Convert field names and string values to unicode
+						if encoding:
+							field_name = field_name.decode(encoding)
+							if isinstance(value, str):
+								value = value.decode(encoding)
+						feature_data[field_name] = value
+					records.append(feature_data)
 	return records
 
 
