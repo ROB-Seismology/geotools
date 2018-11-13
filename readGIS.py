@@ -214,7 +214,7 @@ def read_GIS_file_shapes(GIS_filespec, layer_num=0):
 	return list(shapes)
 
 
-def read_GIS_srs(GIS_filespec, layer_num=0):
+def read_GIS_file_srs(GIS_filespec, layer_num=0):
 	"""
 	Read GIS SRS.
 
@@ -237,4 +237,3 @@ def read_GIS_srs(GIS_filespec, layer_num=0):
 		raise Exception("File contains less than %d layers!" % layer_num)
 
 	return layer.GetSpatialRef()
-
