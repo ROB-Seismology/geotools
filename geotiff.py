@@ -2,6 +2,11 @@
 Write single-band and multi-band GeoTiffs
 """
 
+## Note: we do not import unicode_literals because python2 gdal module
+## does not accept unicode arguments!
+from __future__ import absolute_import, division, print_function
+
+
 import numpy as np
 import PIL
 import gdal, osr
@@ -9,8 +14,9 @@ import gdal, osr
 gdal.UseExceptions()
 
 
-def write_single_band_geotiff(out_filespec, data, extent, srs, cell_registration="center",
-								north_up=False, nodata_value=np.nan, compression='LZW'):
+def write_single_band_geotiff(out_filespec, data, extent, srs,
+				cell_registration="center", north_up=False,
+				nodata_value=np.nan, compression='LZW'):
 	"""
 	Write data array to single-band GeoTiff
 
@@ -79,8 +85,8 @@ def write_single_band_geotiff(out_filespec, data, extent, srs, cell_registration
 	ds = None
 
 
-def write_multi_band_geotiff(out_filespec, img, extent, srs, cell_registration="corner",
-								north_up=True, compression='LZW'):
+def write_multi_band_geotiff(out_filespec, img, extent, srs,
+				cell_registration="corner", north_up=True, compression='LZW'):
 	"""
 	Write image data to multi-band GeoTiff
 
