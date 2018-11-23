@@ -1,23 +1,38 @@
-import os
+"""
+Read GIS files in various formats
+"""
 
+from __future__ import absolute_import, division, print_function, unicode_literals
+from builtins import dict, str
+
+try:
+	## Python 2
+	basestring
+except:
+	## Python 3
+	basestring = str
+
+
+import os
 import ogr, osr
 
-from coordtrans import wgs84
+from .coordtrans import WGS84, LAMBERT1972
 
 
-def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fix_mi_lambert=True, verbose=True):
+def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
+				fix_mi_lambert=True, verbose=True):
 	"""
 	Read GIS file.
 
 	:param GIS_filespec:
-		String, full path to GIS file to read
+		str, full path to GIS file to read
 	:param layer_num:
-		Integer, index of layer to read (default: 0)
+		int, index of layer to read (default: 0)
 	:param out_srs:
 		instance of :class:`ogr.SpatialReference`
 		spatial reference system into which coordinates will be transformed
 		If None, native spatial reference system will be used
-		(default: wgs84)
+		(default: WGS84)
 	:param encoding:
 		str, unicode encoding
 		(default: "guess", will try to guess, but this may fail)
@@ -26,7 +41,7 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 		old MapInfo files in Lambert 1972 system
 		(default: True)
 	:param verbose:
-		Boolean, whether or not to print information while reading
+		bool, whether or not to print information while reading
 		GIS table (default: True)
 
 	:return:
@@ -85,15 +100,16 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 
 		## Hack to fix earlier MapInfo implementation of Lambert1972
 		if fix_mi_lambert:
-			if os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and 'DATUM["Belgium_Hayford"' in tab_srs.ExportToWkt():
-				from coordtrans import lambert1972
+			if (os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and
+							'DATUM["Belgium_Hayford"' in tab_srs.ExportToWkt()):
 				if tab_srs.IsProjected():
 					print("Fixing older MapInfo implementation of Lambert1972...")
-					tab_srs = lambert1972
+					tab_srs = LAMBERT1972
 				else:
 					# TODO
-					print("Warning: older MapInfo implementation of Lambert1972, coordinates may be shifted!")
-				#tab_srs.CopyGeogCSFrom(lambert1972)
+					print("Warning: older MapInfo implementation of Lambert1972, "
+							"coordinates may be shifted!")
+				#tab_srs.CopyGeogCSFrom(LAMBERT1972)
 
 		if out_srs:
 			coordTrans = osr.CoordinateTransformation(tab_srs, out_srs)
@@ -133,24 +149,24 @@ def read_GIS_file(GIS_filespec, layer_num=0, out_srs=wgs84, encoding="guess", fi
 						## Convert field names and string values to unicode
 						if encoding:
 							field_name = field_name.decode(encoding)
-							if isinstance(value, str):
+							if isinstance(value, basestring):
 								value = value.decode(encoding)
 						feature_data[field_name] = value
 					records.append(feature_data)
 	return records
 
 
-def read_GIS_file_attributes(GIS_filespec, layer_num=0):
+def read_gis_file_attributes(GIS_filespec, layer_num=0):
 	"""
 	Read GIS data attributes.
 
 	:param GIS_filespec:
-		String, full path to GIS file to read
+		str, full path to GIS file to read
 	:param layer_num:
-		Integer, index of layer to read (default: 0)
+		int, index of layer to read (default: 0)
 
 	:return:
-		list of attribute names.
+		list of strings, attribute names.
 	"""
 	ds = ogr.Open(GIS_filespec, 0)
 	if ds is None:
@@ -172,17 +188,17 @@ def read_GIS_file_attributes(GIS_filespec, layer_num=0):
 	return field_names
 
 
-def read_GIS_file_shapes(GIS_filespec, layer_num=0):
+def read_gis_file_shapes(GIS_filespec, layer_num=0):
 	"""
 	Read GIS shapes.
 
 	:param GIS_filespec:
-		String, full path to GIS file to read
+		str, full path to GIS file to read
 	:param layer_num:
-		Integer, index of layer to read (default: 0)
+		int, index of layer to read (default: 0)
 
 	:return:
-		list of GIS shapes.
+		list of strings, GIS shapes.
 	"""
 	ds = ogr.Open(GIS_filespec, 0)
 	if ds is None:
@@ -214,17 +230,17 @@ def read_GIS_file_shapes(GIS_filespec, layer_num=0):
 	return list(shapes)
 
 
-def read_GIS_file_srs(GIS_filespec, layer_num=0):
+def read_gis_file_srs(GIS_filespec, layer_num=0):
 	"""
 	Read GIS SRS.
 
 	:param GIS_filespec:
-		String, full path to GIS file to read
+		str, full path to GIS file to read
 	:param layer_num:
-		Integer, index of layer to read (default: 0)
+		int, index of layer to read (default: 0)
 
 	:return:
-		ogr SpatialReferenceSystem.
+		instance of :class:`ogr.SpatialReference`
 	"""
 	ds = ogr.Open(GIS_filespec, 0)
 	if ds is None:
