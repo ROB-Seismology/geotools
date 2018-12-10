@@ -1,3 +1,10 @@
+"""
+Fix imprecise implementation of Lambert1972 coordinate system
+in older MapInfo files
+"""
+
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 import os
 import osr, ogr, gdal
@@ -23,7 +30,8 @@ def backup_mi_file(mi_filespec, backup_filespec="", overwrite=False):
 				if overwrite:
 					os.unlink(backup_filespec)
 				else:
-					print("Warning: not overwriting backup file %s!" % backup_filespec)
+					print("Warning: not overwriting backup file %s!"
+							% backup_filespec)
 					return
 			os.rename(filespec, backup_filespec)
 
@@ -96,7 +104,7 @@ def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
 
 				## Add new feature to output Layer
 				errcode = out_layer.CreateFeature(out_feature)
-				#print errcode
+				#print(errcode)
 
 				## Destroy the feature to free resources
 				out_feature.Destroy()
@@ -109,7 +117,8 @@ def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
 
 		else:
 			## Longitude / Latitude (Belgium): does not seem to be problematic
-			print("Warning: %s has older MapInfo implementation of Lambert1972, not fixed!" % mi_filespec)
+			print("Warning: %s has older MapInfo implementation of Lambert1972, not fixed!"
+					% mi_filespec)
 
 
 
@@ -166,11 +175,10 @@ def fix_mi_lambert_folder_ogr(folder, overwrite_backup=False):
 
 
 if __name__ == "__main__":
-	mi_filespec = r"C:\Temp\MI\QUAT_18_BREUK.tab"
-	#mi_filespec = r"C:\Temp\MI\Quaternary\BasisQ_18.TAB"
-	#backup_mi_file(mi_filespec, r"C:\Temp\MI\QUAT_18_BREUK (old lambert72).tab", overwrite=True)
+	mi_filespec = "C:\\Temp\\MI\\QUAT_18_BREUK.tab"
+	#mi_filespec = "C:\\Temp\\MI\\Quaternary\\BasisQ_18.TAB"
+	#backup_mi_file(mi_filespec, "C:\\Temp\\MI\\QUAT_18_BREUK (old lambert72).tab", overwrite=True)
 
 	#fix_mi_lambert_ogr(mi_filespec)
-	folder = r"D:\GIS-data\Paleosis\Digitized\17-8-Peer"
+	folder = "D:\\GIS-data\\Paleosis\\Digitized\\17-8-Peer"
 	fix_mi_lambert_folder_ogr(folder)
-
