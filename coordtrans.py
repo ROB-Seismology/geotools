@@ -125,13 +125,14 @@ def get_utm_srs(utm_spec="UTM31N"):
 	"""
 	if not isinstance(utm_spec, basestring):
 		utm_zone, hemisphere = utm_spec[:2]
-		utm_spec = "UTM%d%s" % (utm_zone, hemisphere)
+		utm_spec = "UTM%02d%s" % (utm_zone, hemisphere)
 	utm_hemisphere = utm_spec[-1]
 	utm_zone = int(utm_spec[-3:-1])
 	utm = osr.SpatialReference()
-	utm.SetProjCS("UTM %d (WGS84) in northern hemisphere." % utm_zone)
+	srs_name = bytes("UTM %d (WGS84) in northern hemisphere." % utm_zone)
+	utm.SetProjCS(srs_name)
 	#utm.SetWellKnownGeogCS("WGS84")
-	utm.ImportFromEPSG()
+	utm.ImportFromEPSG(WGS84_EPSG)
 	utm.SetUTM(utm_zone, {"N": True, "S": False}[utm_hemisphere])
 	return utm
 
