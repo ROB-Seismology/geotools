@@ -148,8 +148,9 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 						value = feature.GetField(i)
 						## Convert field names and string values to unicode
 						if encoding:
-							field_name = field_name.decode(encoding)
-							if isinstance(value, basestring):
+							if isinstance(field_name, bytes):
+								field_name = field_name.decode(encoding)
+							if isinstance(value, bytes):
 								value = value.decode(encoding)
 						feature_data[field_name] = value
 					records.append(feature_data)
