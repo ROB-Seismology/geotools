@@ -14,9 +14,26 @@ except:
 
 
 import os
+from collections import OrderedDict
 import ogr, osr
 
 from .coordtrans import WGS84, LAMBERT1972
+
+
+
+def get_available_formats():
+	"""
+	Return list of available vector GIS formats
+	"""
+	gis_formats = []
+
+	for i in range(ogr.GetDriverCount()):
+		driver = ogr.GetDriver(i)
+		driverName = driver.GetName()
+		if not driverName in gis_formats:
+			gis_formats.append(driverName)
+
+	return sorted(gis_formats)
 
 
 def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
@@ -121,7 +138,7 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 		if verbose:
 			print("Number of features in layer %d: %d" % (layer_num, num_features))
 		for i in range(num_features):
-			feature_data = {}
+			feature_data = OrderedDict()
 			feature = layer.GetNextFeature()
 
 			## Silently ignore empty rows
