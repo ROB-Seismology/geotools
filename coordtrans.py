@@ -48,6 +48,11 @@ LAMBERT1972 = osr.SpatialReference()
 LAMBERT1972_EPSG = 6190
 LAMBERT1972.ImportFromEPSG(LAMBERT1972_EPSG)
 
+## Google Pseudo-Mercator
+GGL_MERCATOR = osr.SpatialReference()
+GGL_MERCATOR_EPSG = 3857
+GGL_MERCATOR.ImportFromEPSG(GGL_MERCATOR_EPSG)
+
 ## ECEF: Earth centred, earth fixed, righthanded 3D coordinate system
 ECEF_WKT = """
 	GEOCCS['WGS 84',
