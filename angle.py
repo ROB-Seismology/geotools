@@ -471,9 +471,30 @@ class Angle:
 
 		:param weights:
 			See :meth:`mean`
+
+		:return:
+			float
 		"""
 		mean_angle = self.mean(weights=weights)
 		return mean_angle.deg()
+
+	def min(self):
+		"""
+		Get minimum angle
+
+		:return:
+			instance of :class:`Angle` or :class:`Azimuth`
+		"""
+		return self.__class__(np.min(self.__val))
+
+	def max(self):
+		"""
+		Get maximum angle
+
+		:return:
+			instance of :class:`Angle` or :class:`Azimuth`
+		"""
+		return self.__class__(np.max(self.__val))
 
 	def to_unit_vector(self):
 		"""
@@ -489,6 +510,12 @@ class Angle:
 	def get_enclosed_angle(self, other_angle):
 		"""
 		Compute enclosed angle between this angle and another one
+
+		:param other_angle:
+			instance of :class:`Angle` or :class:`Azimuth`
+
+		:return:
+			instance of :class:`Angle`
 		"""
 		assert (isinstance(other_angle, Angle)
 				and not other_angle.is_other_angle_type(other_angle))
@@ -514,10 +541,10 @@ class Angle:
 
 		return self.__class__(np.abs(delta_rad))
 		"""
-		delta1 = self - other_angle
-		delta2 = other_angle - self
+		delta1 = (self - other_angle).to_angle()
+		delta2 = (other_angle - self).to_angle()
 
-		return self.__class__(np.min([np.abs(delta1), np.abs(delta2)], axis=0))
+		return Angle(np.min([np.abs(delta1), np.abs(delta2)], axis=0))
 
 
 class Azimuth(Angle):
