@@ -128,7 +128,7 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 							"coordinates may be shifted!")
 				#tab_srs.CopyGeogCSFrom(LAMBERT1972)
 
-		if out_srs:
+		if out_srs and not tab_srs.IsSame(out_srs):
 			coordTrans = osr.CoordinateTransformation(tab_srs, out_srs)
 		else:
 			coordTrans = None
