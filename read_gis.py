@@ -37,7 +37,7 @@ def get_available_formats():
 
 
 def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
-				fix_mi_lambert=True, verbose=True):
+				attribute_filter="", fix_mi_lambert=True, verbose=True):
 	"""
 	Read GIS file.
 
@@ -53,6 +53,17 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 	:param encoding:
 		str, unicode encoding
 		(default: "guess", will try to guess, but this may fail)
+	:param attribute_filter:
+		str, attribute query string to be used when fetching features.
+		Only features for which the query evaluates as true will be returned.
+		The query string should be in the format of an SQL WHERE clause.
+		Note that string values in the query must be single-quoted!
+
+		Alternatively, attribute filter may be a dict, mapping field
+		names to lists of values.
+		Note: multiple values mapped to a column name will act as logical
+		OR, multiple keys will act as logical AND operator.
+		(default: "")
 	:param fix_mi_lambert:
 		bool, whether or not to apply spatial reference system fix for
 		old MapInfo files in Lambert 1972 system
@@ -133,13 +144,34 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 		else:
 			coordTrans = None
 
+		## Apply attribute filter
+		if attribute_filter:
+			if isinstance(attribute_filter, dict):
+				subqueries = []
+				for key, values in attribute_filter.items():
+					field_index = field_names.index(key)
+					fd = ld.GetFieldDefn(field_index)
+					if fd.GetType() == ogr.OFTString:
+						values = ["'%s'" % val for val in values]
+					q = "%s in (%s)" % (key, ','.join(values))
+					subqueries.append(q)
+				attribute_filter = ' AND '.join(subqueries)
+				attribute_filter = bytes(attribute_filter)
+			retval = layer.SetAttributeFilter(attribute_filter)
+			if retval != 0:
+				print("Warning: attribute filter failed, check your syntax!")
+
 		## Loop over features in layer
 		num_features = layer.GetFeatureCount()
 		if verbose:
 			print("Number of features in layer %d: %d" % (layer_num, num_features))
-		for i in range(num_features):
+
+		## Note: because of attribute filter, only use GetNextFeature method
+		## or iterate over layer
+		for i, feature in enumerate(layer):
+		#for i in range(num_features):
 			feature_data = OrderedDict()
-			feature = layer.GetNextFeature()
+			#feature = layer.GetNextFeature()
 
 			## Silently ignore empty rows
 			if feature:
