@@ -156,7 +156,8 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 					q = "%s in (%s)" % (key, ','.join(values))
 					subqueries.append(q)
 				attribute_filter = ' AND '.join(subqueries)
-				attribute_filter = bytes(attribute_filter)
+				## Note: str for PY2/3 compatibility
+				attribute_filter = str(attribute_filter)
 			retval = layer.SetAttributeFilter(attribute_filter)
 			if retval != 0:
 				print("Warning: attribute filter failed, check your syntax!")
