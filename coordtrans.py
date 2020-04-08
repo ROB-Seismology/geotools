@@ -134,7 +134,8 @@ def get_utm_srs(utm_spec="UTM31N"):
 	utm_hemisphere = utm_spec[-1]
 	utm_zone = int(utm_spec[-3:-1])
 	utm = osr.SpatialReference()
-	srs_name = bytes("UTM %d (WGS84) in northern hemisphere." % utm_zone)
+	## Note: str for PY2/3 compatibility
+	srs_name = str("UTM %d (WGS84) in northern hemisphere." % utm_zone)
 	utm.SetProjCS(srs_name)
 	#utm.SetWellKnownGeogCS("WGS84")
 	utm.ImportFromEPSG(WGS84_EPSG)
