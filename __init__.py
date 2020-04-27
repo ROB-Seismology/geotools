@@ -7,6 +7,7 @@ Contains following submodules:
 - geodetic: distance/azimuth calculations in cartesian and spherical coordsys
 - geotiff: write single-band and multi-band GeoTiffs
 - read_gis: read GIS files in various formats
+- pt_in_polygon: filter point data by polygon
 
 Note that these submodules are not loaded in the package's namespace,
 but must be imported separately.
