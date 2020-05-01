@@ -11,7 +11,7 @@ from osgeo import ogr
 __all__ = ['filter_collection_by_polygon']
 
 
-def filter_collection_by_polygon(pt_collection, poly_obj):
+def filter_collection_by_polygon(pt_collection, poly_obj, as_indexes=False):
 	"""
 	Subselect points from a point collection that are situated
 	inside a polygon
@@ -24,11 +24,16 @@ def filter_collection_by_polygon(pt_collection, poly_obj):
 	:param poly_obj:
 		polygon or closed linestring object (ogr geometry object
 		or oqhazlib.geo.polygon.Polygon object)
+	:param as_indexes:
+		bool, whether to return indexes instead of collection objects
+		(default: False)
 
 	:return:
-		list with instances of objects that are part of the collection
+		(points_inside, points_outside) tuple
+		lists with instances of objects that are part of the collection
+		(or indexes) that are inside/outside the polygon
 	"""
-	filtered_points = []
+	points_inside, points_outside = [], []
 
 	## First try converting poly_obj to ogr geometry if this is supported
 	if hasattr(poly_obj, 'to_ogr_geom'):
@@ -58,10 +63,16 @@ def filter_collection_by_polygon(pt_collection, poly_obj):
 				else:
 					return None
 			filtered_points = []
-			for i, item in enumerate(pt_collection):
+			for idx, item in enumerate(pt_collection):
 				point.SetPoint(0, item.lon, item.lat)
 				if point.Within(poly_obj):
-					filtered_points.append(item)
+					point_list = points_inside
+				else:
+					point_list = points_outside
+				if as_indexes:
+					point_list.append(idx)
+				else:
+					point_list.append(item)
 
 		else:
 			msg = 'Warning: %s not a polygon geometry!'
@@ -74,11 +85,17 @@ def filter_collection_by_polygon(pt_collection, poly_obj):
 			mesh = oqhazlib.geo.Mesh(pt_collection.get_longitudes(),
 									pt_collection.get_latitudes(), depths=None)
 			intersects = poly_obj.intersects(mesh)
-			filtered_points = []
 			in_polygon = (intersects == True)
-			for idx in np.where(in_polygon)[0]:
-				filtered_points.append(pt_collection[idx])
+			for idx in range(len(in_polygon)):
+				if in_polygon[idx]:
+					point_list = points_inside
+				else:
+					point_list = points_outside
+				if as_indexes:
+					points_inside.append(idx)
+				else:
+					points_inside.append(pt_collection[idx])
 		else:
 			raise Exception("poly_obj not recognized!")
 
-	return filtered_points
+	return points_inside, points_outside
