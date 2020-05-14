@@ -74,16 +74,20 @@ def meshed_spherical_distance(lons1, lats1, lons2, lats2):
 	"""
 	## Number of locations in each set of points
 	if np.isscalar(lons1):
+		assert np.isscalar(lats1)
 		nlocs1 = 1
 		lons1 = np.array([lons1])
 		lats1 = np.array([lats1])
 	else:
+		assert lons1.shape == lats1.shape
 		nlocs1 = len(lons1)
 	if np.isscalar(lons2):
+		assert np.isscalar(lats2)
 		nlocs2 = 1
 		lons2 = np.array([lons2])
 		lats2 = np.array([lats2])
 	else:
+		assert lons2.shape == lats2.shape
 		nlocs2 = len(lons2)
 
 	## Pre-allocate array
