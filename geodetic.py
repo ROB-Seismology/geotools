@@ -48,13 +48,53 @@ def spherical_distance(lon1, lat1, lon2, lat2):
 	:return:
 		float or numpy array, distance in m
 	"""
-	dlat = np.radians(lat2 - lat1)
-	dlon = np.radians(lon2 - lon1)
-	a = np.sin(dlat/2) * np.sin(dlat/2) + np.cos(np.radians(lat1)) \
-		* np.cos(np.radians(lat2)) * np.sin(dlon/2) * np.sin(dlon/2)
+	lon1, lat1 = np.radians(lon1), np.radians(lat1)
+	lon2, lat2 = np.radians(lon2), np.radians(lat2)
+	dlat = lat2 - lat1
+	dlon = lon2 - lon1
+	a = np.sin(dlat/2.)**2 + (np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2.)**2)
 	c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
 	d = EARTH_RADIUS * c
 	return d * 1000.
+
+
+def meshed_spherical_distance(lons1, lats1, lons2, lats2):
+	"""
+	Meshed spherical distance computation: compute distance between
+	each combination of points in two sets of points
+
+	:param lons1:
+	:param lats1:
+	:param lons2:
+	:param lats2:
+		see :func:`spherical_distance`
+
+	:return:
+		2-D float array [len(lons1), len(lons2)], distances in m
+	"""
+	## Number of locations in each set of points
+	if np.isscalar(lons1):
+		nlocs1 = 1
+		lons1 = np.array([lons1])
+		lats1 = np.array([lats1])
+	else:
+		nlocs1 = len(lons1)
+	if np.isscalar(lons2):
+		nlocs2 = 1
+		lons2 = np.array([lons2])
+		lats2 = np.array([lats2])
+	else:
+		nlocs2 = len(lons2)
+
+	## Pre-allocate array
+	distances = np.zeros((nlocs1, nlocs2))
+
+	## Perform distance calculation
+	for i in range(nlocs1):
+		lon1, lat1 = lons1[i], lats1[i]
+		distances[i] = spherical_distance(lon1, lat1, lons2, lats2)
+
+	return distances
 
 
 def cartesian_azimuth(x1, y1, x2, y2):
