@@ -3,7 +3,7 @@ Read GIS files in various formats
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-from builtins import dict, str
+from builtins import dict
 
 try:
 	## Python 2
