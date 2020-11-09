@@ -8,19 +8,23 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 import numpy as np
+from osgeo import ogr
 from . import coordtrans as ct
 from .read_gis import read_gis_file
 import mapping.layeredbasemap as lbm
 
 
 
-def create_buffer_polygon(gis_file, buffer_distance, show_plot=False):
+def create_buffer_polygon(geom, buffer_distance, show_plot=False):
 	"""
 	Create buffer polygon for a country or region.
 
-	:param gis_file:
-		str, full path to GIS file containing country border
-		Note: the main polygon from the first record will be selected
+	:param geom:
+		instance of :class:`ogr.Geometry`
+		or instance of :class:`lbm.PolygonData` or :class:`lbm.MultiPolygonData`
+		or str, full path to GIS file containing country border
+		Note: if GIS file, the first record will be selected
+		Note: if multipolygon, the main polygon will be selected
 	:param buffer_distance:
 		float, buffer distance (in km)
 	:param show_plot:
@@ -31,20 +35,36 @@ def create_buffer_polygon(gis_file, buffer_distance, show_plot=False):
 	:return:
 		OGR Geometry object
 	"""
-	## Read main polygon
-	#gis_data = lbm.GisData(gis_file)
-	#_, _, polygon_data = gis_data.get_data()
-	recs = read_gis_file(gis_file, verbose=False)
-	geom = recs[0]['obj']
-	geom.CloseRings()
-	polygon_data = lbm.MultiPolygonData.from_ogr(geom)
+	if isinstance(geom, str):
+		## Read 1st record
+		gis_file = geom
+		#gis_data = lbm.GisData(gis_file)
+		#_, _, polygon_data = gis_data.get_data()
+		recs = read_gis_file(gis_file, verbose=False)
+		geom = recs[0]['obj']
+	if isinstance(geom, ogr.Geometry):
+		try:
+			geom.CloseRings()
+		except:
+			pass
+		if geom.GetGeometryName() == 'POLYGON':
+			polygon_data = lbm.PolygonData.from_ogr(geom)
+		elif geom.GetGeometryName() == 'MULTIPOLYGON':
+			polygon_data = lbm.MultiPolygonData.from_ogr(geom)
+	elif isinstance(geom, lbm.PolygonData, lbm.MultiPolygonData):
+		polygon_data = geom
+	else:
+		raise Exception('geom of unknown type: %s' % type(geom))
 
 	## Select main polygon
-	main_pg, pg_len = None, 0
-	for p, pg in enumerate(polygon_data):
-		if len(pg.lons) > pg_len:
-			main_pg = pg
-			pg_len = len(pg.lons)
+	if isinstance(polygon_data, lbm.MultiPolygonData):
+		main_pg, pg_len = None, 0
+		for p, pg in enumerate(polygon_data):
+			if len(pg.lons) > pg_len:
+				main_pg = pg
+				pg_len = len(pg.lons)
+	else:
+		main_pg = polygon_data
 
 	## Determine UTM projection
 	centroid = main_pg.get_centroid()
