@@ -128,8 +128,10 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 
 		## Hack to fix earlier MapInfo implementation of Lambert1972
 		if fix_mi_lambert:
+			wkt = tab_srs.ExportToWkt()
 			if (os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and
-							'DATUM["Belgium_Hayford"' in tab_srs.ExportToWkt()):
+				('DATUM["Belgium_Hayford' in wkt or 'DATUM["MIF 999' in wkt
+				or 'TOWGS84[0,0,0,0,0,0,0]' in wkt)):
 				if tab_srs.IsProjected():
 					print("Fixing older MapInfo implementation of Lambert1972...")
 					tab_srs = LAMBERT1972
