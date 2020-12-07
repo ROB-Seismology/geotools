@@ -37,7 +37,7 @@ def backup_mi_file(mi_filespec, backup_filespec="", overwrite=False):
 
 
 def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
-	from mapping.geotools.coordtrans import lambert1972
+	from mapping.geotools.coordtrans import LAMBERT1972
 
 	in_ds = ogr.Open(mi_filespec, 0)
 
@@ -47,7 +47,9 @@ def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
 
 	in_layer = in_ds.GetLayer(0)
 	in_srs = in_layer.GetSpatialRef()
-	if 'DATUM["Belgium_Hayford"' in in_srs.ExportToWkt():
+	wkt = in_srs.ExportToWkt()
+	if ('DATUM["Belgium_Hayford' in wkt or 'DATUM["MIF 999' in wkt
+		or 'TOWGS84[0,0,0,0,0,0,0]' in wkt):
 		if in_srs.IsProjected():
 			print("Fixing %s... with ogr/gdal" % mi_filespec)
 			#in_srs.CopyGeogCSFrom(lambert1972)
@@ -71,8 +73,8 @@ def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
 			## If input geometry type is wkbUnknown, output features are not
 			## created, so we just set linestring, but it doesn't really matter
 			geom_type = in_layer.GetGeomType() or ogr.wkbLineString
-			out_layer = out_ds.CreateLayer(in_layer.GetName(), srs=lambert1972,
-											geom_type=geom_type)
+			out_layer = out_ds.CreateLayer(in_layer.GetName(), srs=LAMBERT1972,
+												geom_type=geom_type)
 
 			## Copy input Layer Fields to the output Layer
 			in_layer_defn = in_layer.GetLayerDefn()
@@ -92,15 +94,15 @@ def fix_mi_lambert_ogr(mi_filespec, overwrite_backup=False):
 				for i in range(out_layer_defn.GetFieldCount()):
 					field_defn = out_layer_defn.GetFieldDefn(i)
 					out_feature.SetField(out_layer_defn.GetFieldDefn(i).GetNameRef(),
-						in_feature.GetField(i))
+												in_feature.GetField(i))
 
 				## Set geometry if present
 				geom = in_feature.GetGeometryRef()
 				if geom:
-					wkt = geom.ExportToWkt()
+					#wkt = geom.ExportToWkt()
 					out_feature.SetGeometry(geom.Clone())
-				#out_geom = ogr.CreateGeometryFromWkt(wkt)
-				#out_feature.SetGeometry(out_geom)
+					#out_geom = ogr.CreateGeometryFromWkt(wkt)
+					#out_feature.SetGeometry(out_geom)
 
 				## Add new feature to output Layer
 				errcode = out_layer.CreateFeature(out_feature)
