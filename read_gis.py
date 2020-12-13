@@ -15,6 +15,7 @@ except:
 
 import os
 from collections import OrderedDict
+import numpy as np
 import ogr, osr
 
 from .coordtrans import WGS84, LAMBERT1972
@@ -60,7 +61,7 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 		Note that string values in the query must be single-quoted!
 
 		Alternatively, attribute filter may be a dict, mapping field
-		names to lists of values.
+		names to lists of values (or a single value).
 		Note: multiple values mapped to a column name will act as logical
 		OR, multiple keys will act as logical AND operator.
 		(default: "")
@@ -131,7 +132,7 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 			wkt = tab_srs.ExportToWkt()
 			if (os.path.splitext(GIS_filespec)[-1].upper() == ".TAB" and
 				('DATUM["Belgium_Hayford' in wkt or 'DATUM["MIF 999' in wkt
-				or 'TOWGS84[0,0,0,0,0,0,0]' in wkt)):
+				or 'DATUM["MIF 110' in wkt)):
 				if tab_srs.IsProjected():
 					print("Fixing older MapInfo implementation of Lambert1972...")
 					tab_srs = LAMBERT1972
@@ -151,6 +152,8 @@ def read_gis_file(GIS_filespec, layer_num=0, out_srs=WGS84, encoding="guess",
 			if isinstance(attribute_filter, dict):
 				subqueries = []
 				for key, values in attribute_filter.items():
+					if np.isscalar(values):
+						values = [values]
 					field_index = field_names.index(key)
 					fd = ld.GetFieldDefn(field_index)
 					if fd.GetType() == ogr.OFTString:
